@@ -1,7 +1,7 @@
 --[[
   ⚡  G L U H F I X  v 9 . 0  —  FINAL
-  Toggle: [Left Ctrl]
-  Made by GLUHFIX
+  Toggle: [Insert]
+  Password: GLUHFIX-V9
 ]]
 
 local Players          = game:GetService("Players")
@@ -12,9 +12,6 @@ local Lighting         = game:GetService("Lighting")
 local Debris           = game:GetService("Debris")
 local StarterGui       = game:GetService("StarterGui")
 local TeleportService  = game:GetService("TeleportService")
-local ContextActionService = game:GetService("ContextActionService")
-local AnimationTrackService = nil
-pcall(function() AnimationTrackService = game:GetService("AnimationService") end)
 
 local lp  = Players.LocalPlayer
 local cam = workspace.CurrentCamera
@@ -27,11 +24,8 @@ local function getHum()  local c=getChar(); return c and c:FindFirstChildOfClass
 -- CONFIG
 -- ============================================================
 local CFG = {
-    toggleKey      = Enum.KeyCode.LeftControl,
-    aimbotKey      = Enum.KeyCode.CapsLock,
-    aimbotMouseBtn = nil,  -- nil = no mouse button, or Enum.UserInputType.MouseButton1/2
-    triggerbotKey  = Enum.KeyCode.Unknown, -- triggerbot hold key
-    triggerbotMouse= Enum.UserInputType.MouseButton1, -- default LMB
+    toggleKey  = Enum.KeyCode.Insert,
+    aimbotKey  = Enum.KeyCode.CapsLock,
     accentH=0.0, accentS=0.0,
 
     fly=false,      flySpeed=80,
@@ -46,9 +40,7 @@ local CFG = {
 
     aimbot=false,   aimbotFOV=120,  aimbotSmooth=18,
     aimbotTeamCheck=false, aimbotBone="Head",
-    aimbotVisCheck=true,
-    triggerbot=false, triggerbotDelay=0.05,
-
+    aimbotVisCheck=true,   -- NEU: Visual Check (kein Targeting durch Wände)
     antiKick=false, antiDetect=false,
 
     invisible=false, headless=false,
@@ -77,19 +69,18 @@ local CFG = {
 }
 
 -- ============================================================
--- SAVE / LOAD
+-- SAVE / LOAD  (Config Tab persistiert alles)
 -- ============================================================
 local function saveConfig()
     pcall(function()
         for _,k in ipairs({"accentH","accentS","flySpeed","speedMult","jumpPower","spinSpeed",
             "aimbotFOV","aimbotSmooth","espMaxDist","espColorH","espColorS","espColorV",
-            "espLineThick","crosshairStyle","crosshairColorH","crosshairSize","frozenTime",
-            "gravity","triggerbotDelay"}) do
+            "espLineThick","crosshairStyle","crosshairColorH","crosshairSize","frozenTime","gravity"}) do
             lp:SetAttribute("GF9_"..k, tostring(CFG[k]))
         end
         for _,k in ipairs({"fly","noclip","speed","highJump","spinBot","bunnyHop","autoJump",
             "antiAfk","antiLag","infinite_jump","aimbot","aimbotTeamCheck","aimbotVisCheck",
-            "triggerbot","antiKick","antiDetect","invisible","headless",
+            "antiKick","antiDetect","invisible","headless",
             "esp","espHealth","espNames","espDist","espChams","espCorner","espSkeleton",
             "espHeadDot","espBoxFull","espTracer","fullbright","noFog","crosshair","freezeTime",
             "showCoords","showFPS","chatSpy"}) do
@@ -101,13 +92,12 @@ local function loadConfig()
     pcall(function()
         for _,k in ipairs({"accentH","accentS","flySpeed","speedMult","jumpPower","spinSpeed",
             "aimbotFOV","aimbotSmooth","espMaxDist","espColorH","espColorS","espColorV",
-            "espLineThick","crosshairStyle","crosshairColorH","crosshairSize","frozenTime",
-            "gravity","triggerbotDelay"}) do
+            "espLineThick","crosshairStyle","crosshairColorH","crosshairSize","frozenTime","gravity"}) do
             local v=lp:GetAttribute("GF9_"..k); if v then CFG[k]=tonumber(v) or CFG[k] end
         end
         for _,k in ipairs({"fly","noclip","speed","highJump","spinBot","bunnyHop","autoJump",
             "antiAfk","antiLag","infinite_jump","aimbot","aimbotTeamCheck","aimbotVisCheck",
-            "triggerbot","antiKick","antiDetect","invisible","headless",
+            "antiKick","antiDetect","invisible","headless",
             "esp","espHealth","espNames","espDist","espChams","espCorner","espSkeleton",
             "espHeadDot","espBoxFull","espTracer","fullbright","noFog","crosshair","freezeTime",
             "showCoords","showFPS","chatSpy"}) do
@@ -139,7 +129,6 @@ local function refreshT()
     T.green   = Color3.fromRGB(60,220,100)
     T.red     = Color3.fromRGB(255,55,75)
     T.white   = Color3.fromRGB(255,255,255)
-    T.purple  = Color3.fromRGB(168,85,247)
     for _,cb in ipairs(thCBs) do pcall(cb) end
 end
 refreshT()
@@ -178,27 +167,167 @@ local function addGlow(parent,col,sz,tp)
 end
 
 -- ============================================================
--- "Made by GLUHFIX" — always visible watermark (purple, bottom right)
+-- ⚡ SMOF PASSWORD SCREEN
 -- ============================================================
-local watermark = mk("TextLabel",{
-    Text="made by GLUHFIX",
-    Size=UDim2.new(0,160,0,22),
-    AnchorPoint=Vector2.new(1,1),
-    Position=UDim2.new(1,-10,1,-10),
-    BackgroundTransparency=1,
-    TextColor3=Color3.fromRGB(168,85,247),
-    TextSize=12, Font=Enum.Font.GothamBold,
-    TextXAlignment=Enum.TextXAlignment.Right,
-    ZIndex=900
+local _guiUnlocked = false
+
+local SmofBg = mk("Frame",{
+    Size=UDim2.new(1,0,1,0), Position=UDim2.new(0,0,0,0),
+    BackgroundColor3=Color3.fromRGB(0,0,0), BorderSizePixel=0, ZIndex=200
 },gui)
--- subtle glow effect on watermark
-local wmStroke=mk("UIStroke",{Color=Color3.fromRGB(168,85,247),Thickness=0,Transparency=.6},watermark)
+
+-- Glitch-scanline overlay
+local scanLines = mk("Frame",{
+    Size=UDim2.new(1,0,1,0), BackgroundTransparency=1, BorderSizePixel=0, ZIndex=201
+},SmofBg)
+for i=0,60 do
+    mk("Frame",{
+        Size=UDim2.new(1,0,0,1),
+        Position=UDim2.new(0,0,0,i/60),
+        BackgroundColor3=Color3.fromRGB(255,255,255),
+        BackgroundTransparency=0.96, BorderSizePixel=0, ZIndex=201
+    },scanLines)
+end
+
+-- Center container
+local SmofCenter = mk("Frame",{
+    Size=UDim2.new(0,420,0,320),
+    AnchorPoint=Vector2.new(.5,.5),
+    Position=UDim2.new(.5,0,.5,0),
+    BackgroundColor3=Color3.fromRGB(5,5,5),
+    BorderSizePixel=0, ZIndex=202
+},SmofBg)
+rnd(SmofCenter,18)
+mk("UIStroke",{Color=Color3.fromRGB(255,255,255),Thickness=1.5,ZIndex=203},SmofCenter)
+
+-- Lightning icon top
+mk("TextLabel",{
+    Text="⚡", Size=UDim2.new(1,0,0,60),
+    Position=UDim2.new(0,0,0,18),
+    BackgroundTransparency=1, TextColor3=Color3.fromRGB(255,255,255),
+    TextSize=46, Font=Enum.Font.GothamBold, ZIndex=203
+},SmofCenter)
+
+-- Title
+mk("TextLabel",{
+    Text="GLUHFIX  v9.0", Size=UDim2.new(1,0,0,28),
+    Position=UDim2.new(0,0,0,76),
+    BackgroundTransparency=1, TextColor3=Color3.fromRGB(230,230,230),
+    TextSize=20, Font=Enum.Font.GothamBold, ZIndex=203
+},SmofCenter)
+
+-- Subtitle
+mk("TextLabel",{
+    Text="Enter Password to Continue", Size=UDim2.new(1,0,0,18),
+    Position=UDim2.new(0,0,0,106),
+    BackgroundTransparency=1, TextColor3=Color3.fromRGB(85,85,85),
+    TextSize=12, Font=Enum.Font.Gotham, ZIndex=203
+},SmofCenter)
+
+-- Password input box
+local pwBox = mk("Frame",{
+    Size=UDim2.new(1,-48,0,44),
+    AnchorPoint=Vector2.new(.5,0),
+    Position=UDim2.new(.5,0,0,140),
+    BackgroundColor3=Color3.fromRGB(14,14,14),
+    BorderSizePixel=0, ZIndex=203
+},SmofCenter)
+rnd(pwBox,11)
+mk("UIStroke",{Color=Color3.fromRGB(50,50,50),Thickness=1.2,ZIndex=204},pwBox)
+
+local pwInput = mk("TextBox",{
+    Size=UDim2.new(1,-20,1,0),
+    Position=UDim2.new(0,10,0,0),
+    BackgroundTransparency=1,
+    Text="", PlaceholderText="Password...",
+    TextColor3=Color3.fromRGB(255,255,255),
+    PlaceholderColor3=Color3.fromRGB(60,60,60),
+    TextSize=16, Font=Enum.Font.GothamBold,
+    TextXAlignment=Enum.TextXAlignment.Center,
+    ZIndex=204, ClearTextOnFocus=false
+},pwBox)
+
+-- Confirm button
+local pwBtn = mk("TextButton",{
+    Size=UDim2.new(1,-48,0,44),
+    AnchorPoint=Vector2.new(.5,0),
+    Position=UDim2.new(.5,0,0,196),
+    BackgroundColor3=Color3.fromRGB(22,22,22),
+    TextColor3=Color3.fromRGB(255,255,255),
+    Text="UNLOCK  ⚡",
+    TextSize=14, Font=Enum.Font.GothamBold,
+    BorderSizePixel=0, ZIndex=203
+},SmofCenter)
+rnd(pwBtn,11)
+mk("UIStroke",{Color=Color3.fromRGB(80,80,80),Thickness=1.2,ZIndex=204},pwBtn)
+
+-- Status label
+local pwStatus = mk("TextLabel",{
+    Text="", Size=UDim2.new(1,0,0,18),
+    Position=UDim2.new(0,0,0,250),
+    BackgroundTransparency=1,
+    TextColor3=Color3.fromRGB(255,55,75),
+    TextSize=11, Font=Enum.Font.GothamBold, ZIndex=203
+},SmofCenter)
+
+-- Version label bottom
+mk("TextLabel",{
+    Text="Hello, "..lp.Name, Size=UDim2.new(1,0,0,16),
+    Position=UDim2.new(0,0,0,278),
+    BackgroundTransparency=1, TextColor3=Color3.fromRGB(50,50,50),
+    TextSize=10, Font=Enum.Font.Gotham, ZIndex=203
+},SmofCenter)
+
+-- Hover effects
+pwBtn.MouseEnter:Connect(function()
+    tw(pwBtn,.1,{BackgroundColor3=Color3.fromRGB(40,40,40)})
+end)
+pwBtn.MouseLeave:Connect(function()
+    tw(pwBtn,.1,{BackgroundColor3=Color3.fromRGB(22,22,22)})
+end)
+
+-- Animate SmofCenter in
+SmofCenter.BackgroundTransparency=1
+SmofCenter.Position=UDim2.new(.5,0,.6,0)
+tw(SmofCenter,.45,{BackgroundTransparency=0,Position=UDim2.new(.5,0,.5,0)},Enum.EasingStyle.Back,Enum.EasingDirection.Out)
+
+local function tryUnlock()
+    local entered = pwInput.Text:upper():gsub("%s","")
+    if entered == "GLUHFIX-V9" then
+        pwStatus.Text="✓ Unlocked!"
+        pwStatus.TextColor3=Color3.fromRGB(60,220,100)
+        tw(SmofCenter,.3,{BackgroundTransparency=1,Position=UDim2.new(.5,0,.4,0)},Enum.EasingStyle.Back,Enum.EasingDirection.In)
+        task.delay(.35,function()
+            tw(SmofBg,.2,{BackgroundTransparency=1})
+            task.delay(.21,function()
+                SmofBg:Destroy()
+                _guiUnlocked=true
+            end)
+        end)
+    else
+        pwStatus.Text="✗ Falsches Passwort!"
+        pwStatus.TextColor3=Color3.fromRGB(255,55,75)
+        -- shake animation
+        local ox=pwBox.Position.X.Offset
+        for _=1,4 do
+            tw(pwBox,.04,{Position=UDim2.new(.5,ox+8,0,140)})
+            task.wait(.05)
+            tw(pwBox,.04,{Position=UDim2.new(.5,ox-8,0,140)})
+            task.wait(.05)
+        end
+        tw(pwBox,.06,{Position=UDim2.new(.5,ox,0,140)})
+        pwInput.Text=""
+    end
+end
+
+pwBtn.MouseButton1Click:Connect(tryUnlock)
+pwInput.FocusLost:Connect(function(enter) if enter then tryUnlock() end end)
 
 -- ============================================================
 -- MAIN WINDOW
 -- ============================================================
 local Win=mk("Frame",{
-    Size=UDim2.new(0,710,0,650),AnchorPoint=Vector2.new(.5,.5),
+    Size=UDim2.new(0,700,0,640),AnchorPoint=Vector2.new(.5,.5),
     Position=UDim2.new(.5,0,.5,0),BackgroundColor3=T.bg,
     BorderSizePixel=0,ClipsDescendants=false,Visible=false
 },gui)
@@ -226,10 +355,11 @@ mk("TextLabel",{
     Size=UDim2.new(0,380,0,32),Position=UDim2.new(0,16,0,8),
     BackgroundTransparency=1,TextColor3=T.white,
     TextSize=22,Font=Enum.Font.GothamBold,
-    TextXAlignment=Enum.TextXAlignment.Left
+    TextXAlignment=Enum.TextXAlignment.Left,
+    TextScaled=false
 },Hdr)
 mk("TextLabel",{
-    Text="⚡ GLUHFIX v9.0  •  [Left Ctrl] toggle",
+    Text="⚡ GLUHFIX v9.0  •  [Insert] toggle",
     Size=UDim2.new(0,340,0,16),Position=UDim2.new(0,16,0,38),
     BackgroundTransparency=1,TextColor3=T.dim,
     TextSize=11,Font=Enum.Font.Gotham,
@@ -237,34 +367,25 @@ mk("TextLabel",{
 },Hdr)
 
 local aPill=mk("Frame",{Size=UDim2.new(0,76,0,24),AnchorPoint=Vector2.new(1,.5),
-    Position=UDim2.new(1,-50,.5,0),BackgroundColor3=Color3.fromRGB(8,32,16),BorderSizePixel=0},Hdr)
+    Position=UDim2.new(1,-48,.5,0),BackgroundColor3=Color3.fromRGB(8,32,16),BorderSizePixel=0},Hdr)
 rnd(aPill,12); mk("UIStroke",{Color=T.green,Thickness=1,Transparency=.4},aPill)
 mk("TextLabel",{Text="● ACTIVE",Size=UDim2.new(1,0,1,0),BackgroundTransparency=1,
     TextColor3=T.green,TextSize=10,Font=Enum.Font.GothamBold},aPill)
 
--- RED X close button (not a rectangle — just the X)
-local closeBtn=mk("TextButton",{
-    Text="✕",Size=UDim2.new(0,30,0,30),AnchorPoint=Vector2.new(1,.5),
-    Position=UDim2.new(1,-11,.5,0),
-    BackgroundTransparency=1,  -- transparent background = just the X visible
-    TextColor3=T.red,TextSize=18,Font=Enum.Font.GothamBold,BorderSizePixel=0
-},Hdr)
-closeBtn.MouseEnter:Connect(function()
-    tw(closeBtn,.1,{TextColor3=Color3.fromRGB(255,100,120)})
-    closeBtn.TextSize=22
-end)
-closeBtn.MouseLeave:Connect(function()
-    tw(closeBtn,.1,{TextColor3=T.red})
-    closeBtn.TextSize=18
-end)
+local closeBtn=mk("TextButton",{Text="✕",Size=UDim2.new(0,30,0,30),AnchorPoint=Vector2.new(1,.5),
+    Position=UDim2.new(1,-11,.5,0),BackgroundColor3=Color3.fromRGB(40,8,16),
+    TextColor3=T.red,TextSize=14,Font=Enum.Font.GothamBold,BorderSizePixel=0},Hdr)
+rnd(closeBtn,8)
+closeBtn.MouseEnter:Connect(function() tw(closeBtn,.1,{BackgroundColor3=Color3.fromRGB(90,14,28)}) end)
+closeBtn.MouseLeave:Connect(function() tw(closeBtn,.1,{BackgroundColor3=Color3.fromRGB(40,8,16)}) end)
 
--- Mini button (⚡ lightning bolt, always on screen when menu closed)
 local MiniBtn=mk("TextButton",{Text="⚡",Size=UDim2.new(0,44,0,44),
     Position=UDim2.new(0,10,.5,-22),BackgroundColor3=T.accent,
     TextColor3=T.bg,TextSize=20,Font=Enum.Font.GothamBold,BorderSizePixel=0,Visible=false},gui)
 rnd(MiniBtn,22); rTC(function() MiniBtn.BackgroundColor3=T.accent; MiniBtn.TextColor3=T.bg end)
 
 local function showWin(v)
+    if not _guiUnlocked then return end
     if v then
         Win.Visible=true; Win.BackgroundTransparency=1
         tw(Win,.22,{BackgroundTransparency=0}); MiniBtn.Visible=false
@@ -293,22 +414,15 @@ do
 end
 
 -- Tooltip
-local Tip=mk("Frame",{Size=UDim2.new(0,260,0,36),BackgroundColor3=Color3.fromRGB(10,10,10),
+local Tip=mk("Frame",{Size=UDim2.new(0,250,0,34),BackgroundColor3=Color3.fromRGB(12,12,12),
     BorderSizePixel=0,Visible=false,ZIndex=700},gui)
 rnd(Tip,8); mk("UIStroke",{Color=T.border,Thickness=1},Tip)
 local TipL=mk("TextLabel",{Size=UDim2.new(1,-14,1,0),Position=UDim2.new(0,7,0,0),
-    BackgroundTransparency=1,TextColor3=Color3.fromRGB(210,210,210),TextSize=11,Font=Enum.Font.Gotham,
+    BackgroundTransparency=1,TextColor3=T.txt,TextSize=11,Font=Enum.Font.Gotham,
     ZIndex=701,TextXAlignment=Enum.TextXAlignment.Left,TextWrapped=true},Tip)
--- dark BG for readability
-mk("UIGradient",{Color=ColorSequence.new(Color3.fromRGB(15,15,15),Color3.fromRGB(5,5,5)),Rotation=45},Tip)
 local function tip(o,txt)
     o.MouseEnter:Connect(function() TipL.Text=txt; Tip.Visible=true end)
-    o.MouseMoved:Connect(function(x,y)
-        local vp=cam.ViewportSize
-        local tx=math.min(x+16, vp.X-265)
-        local ty=math.min(y+12, vp.Y-44)
-        Tip.Position=UDim2.new(0,tx,0,ty)
-    end)
+    o.MouseMoved:Connect(function(x,y) Tip.Position=UDim2.new(0,x+14,0,y+10) end)
     o.MouseLeave:Connect(function() Tip.Visible=false end)
 end
 
@@ -322,9 +436,8 @@ local TABS={
     {id="World",   icon="🌍", col=Color3.fromHSV(.34,.88,1)},
     {id="Player",  icon="👤", col=Color3.fromHSV(.72,.88,1)},
     {id="ESP",     icon="🟩", col=Color3.fromHSV(.40,.90,1)},
-    {id="Emotes",  icon="💃", col=Color3.fromHSV(.85,.85,1)},
     {id="Map",     icon="🗺", col=Color3.fromHSV(.10,.82,1)},
-    {id="Config",  icon="💾", col=Color3.fromRGB(180,180,180)},
+    {id="Config",  icon="💾", col=Color3.fromRGB(180,180,180)},   -- NEU
     {id="Settings",icon="⚙", col=Color3.fromRGB(180,180,180)},
 }
 
@@ -339,7 +452,7 @@ local TabInd=mk("Frame",{Size=UDim2.new(0,60,0,3),Position=UDim2.new(0,3,1,-3),
     BackgroundColor3=T.accent,BorderSizePixel=0},TabBar)
 rnd(TabInd,2); rTC(function() TabInd.BackgroundColor3=T.accent end)
 
-local Content=mk("Frame",{Size=UDim2.new(1,-16,1,-124),Position=UDim2.new(0,8,0,118),
+local Content=mk("Frame",{Size=UDim2.new(1,-16,1,-122),Position=UDim2.new(0,8,0,116),
     BackgroundColor3=T.panel,BorderSizePixel=0,ClipsDescendants=true},Win)
 rnd(Content,11); mk("UIStroke",{Color=T.border,Thickness=1},Content)
 
@@ -386,8 +499,8 @@ local function switchTab(id)
 end
 
 for _,t in ipairs(TABS) do
-    local b=mk("TextButton",{Text=t.icon.." "..t.id,Size=UDim2.new(0,60,0,34),
-        BackgroundColor3=T.accGlow,TextColor3=T.dim,TextSize=8,
+    local b=mk("TextButton",{Text=t.icon.." "..t.id,Size=UDim2.new(0,68,0,34),
+        BackgroundColor3=T.accGlow,TextColor3=T.dim,TextSize=9,
         Font=Enum.Font.GothamBold,BorderSizePixel=0},TabBar)
     rnd(b,8); mk("UIStroke",{Color=T.border,Thickness=1},b)
     tabBtns[t.id]=b; tabScrolls[t.id]=makeScroll(Content)
@@ -418,8 +531,12 @@ local function tog(tab,label,key,tipTxt,cb)
     rnd(row,11)
     local rowStroke=mk("UIStroke",{Color=Color3.fromRGB(26,26,26),Thickness=1},row)
     local hb=mk("TextButton",{Size=UDim2.new(1,0,1,0),BackgroundTransparency=1,Text="",ZIndex=3},row)
-    hb.MouseEnter:Connect(function() tw(row,.1,{BackgroundColor3=T.rowHov}); rowStroke.Color=T.border end)
-    hb.MouseLeave:Connect(function() tw(row,.1,{BackgroundColor3=T.row}); rowStroke.Color=Color3.fromRGB(26,26,26) end)
+    hb.MouseEnter:Connect(function()
+        tw(row,.1,{BackgroundColor3=T.rowHov}); rowStroke.Color=T.border
+    end)
+    hb.MouseLeave:Connect(function()
+        tw(row,.1,{BackgroundColor3=T.row}); rowStroke.Color=Color3.fromRGB(26,26,26)
+    end)
     local lbl=mk("TextLabel",{Text=label,Size=UDim2.new(1,-92,1,0),Position=UDim2.new(0,14,0,0),
         BackgroundTransparency=1,TextColor3=T.txt,TextSize=13,Font=Enum.Font.GothamBold,
         TextXAlignment=Enum.TextXAlignment.Left,ZIndex=2},row)
@@ -490,8 +607,12 @@ local function btn(tab,label,tipTxt,cb)
         TextColor3=T.txt,TextSize=13,Text=label,Font=Enum.Font.GothamBold,BorderSizePixel=0},tabScrolls[tab])
     rnd(b,11); local bs=mk("UIStroke",{Color=T.border,Thickness=1.2},b)
     rTC(function() b.BackgroundColor3=T.row; bs.Color=T.border end)
-    b.MouseEnter:Connect(function() tw(b,.1,{BackgroundColor3=T.rowHov}); bs.Color=T.accent; bs.Thickness=1.8; b.TextColor3=T.white end)
-    b.MouseLeave:Connect(function() tw(b,.1,{BackgroundColor3=T.row}); bs.Color=T.border; bs.Thickness=1.2; b.TextColor3=T.txt end)
+    b.MouseEnter:Connect(function()
+        tw(b,.1,{BackgroundColor3=T.rowHov}); bs.Color=T.accent; bs.Thickness=1.8; b.TextColor3=T.white
+    end)
+    b.MouseLeave:Connect(function()
+        tw(b,.1,{BackgroundColor3=T.row}); bs.Color=T.border; bs.Thickness=1.2; b.TextColor3=T.txt
+    end)
     b.MouseButton1Click:Connect(function()
         tw(b,.05,{Size=UDim2.new(1,-6,0,38)}); task.delay(.06,function() tw(b,.08,{Size=UDim2.new(1,0,0,42)}) end)
         if cb then pcall(cb) end
@@ -514,8 +635,9 @@ local function playerPopup(title,onPick)
     mk("TextLabel",{Text=title,Size=UDim2.new(1,0,0,46),BackgroundTransparency=1,
         TextColor3=T.white,TextSize=15,Font=Enum.Font.GothamBold,ZIndex=101},pop)
     local cl=mk("TextButton",{Text="✕",Size=UDim2.new(0,28,0,28),AnchorPoint=Vector2.new(1,0),
-        Position=UDim2.new(1,-8,0,8),BackgroundTransparency=1,
-        TextColor3=T.red,TextSize=16,Font=Enum.Font.GothamBold,BorderSizePixel=0,ZIndex=102},pop)
+        Position=UDim2.new(1,-8,0,8),BackgroundColor3=Color3.fromRGB(40,8,16),
+        TextColor3=T.red,TextSize=12,Font=Enum.Font.GothamBold,BorderSizePixel=0,ZIndex=102},pop)
+    rnd(cl,7)
     cl.MouseButton1Click:Connect(function()
         tw(pop,.14,{BackgroundTransparency=1}); task.delay(.15,function() pop:Destroy() end)
     end)
@@ -646,19 +768,16 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- ANTI LAG  (optimized — no workspace iteration every frame)
+-- ANTI LAG
 local function applyAntiLag(on)
     pcall(function() settings().Rendering.QualityLevel=on and Enum.QualityLevel.Level01 or Enum.QualityLevel.Automatic end)
     pcall(function() Lighting.GlobalShadows=not on end)
     if on then
-        -- one-time pass to disable particles — no repeated iteration
-        task.spawn(function()
-            for _,v in ipairs(workspace:GetDescendants()) do
-                if v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Beam") or v:IsA("Fire") or v:IsA("Smoke") then
-                    pcall(function() v.Enabled=false end)
-                end
+        for _,v in ipairs(workspace:GetDescendants()) do
+            if v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Beam") or v:IsA("Fire") or v:IsA("Smoke") then
+                pcall(function() v.Enabled=false end)
             end
-        end)
+        end
     end
 end
 
@@ -686,12 +805,14 @@ local function applyHeadless(on)
         end
         for _,acc in ipairs(c:GetChildren()) do
             if acc:IsA("Accessory") then
-                local handle=acc:FindFirstChild("Handle"); if not handle then continue end
-                local att=handle:FindFirstChildOfClass("Attachment")
-                if att and (att.Name:find("Hat") or att.Name:find("Hair") or att.Name:find("Face")) then
-                    hlessBkp[handle]=handle.Transparency; pcall(function() handle.Transparency=1 end)
-                    for _,dec in ipairs(handle:GetDescendants()) do
-                        if dec:IsA("Decal") then hlessBkp[dec]=dec.Transparency; pcall(function() dec.Transparency=1 end) end
+                local handle=acc:FindFirstChild("Handle")
+                if handle then
+                    local att=handle:FindFirstChildOfClass("Attachment")
+                    if att and (att.Name:find("Hat") or att.Name:find("Hair") or att.Name:find("Face")) then
+                        hlessBkp[handle]=handle.Transparency; pcall(function() handle.Transparency=1 end)
+                        for _,dec in ipairs(handle:GetDescendants()) do
+                            if dec:IsA("Decal") then hlessBkp[dec]=dec.Transparency; pcall(function() dec.Transparency=1 end) end
+                        end
                     end
                 end
             end
@@ -714,7 +835,9 @@ local function applyInvis(on)
     for _,p in ipairs(c:GetDescendants()) do
         if p:IsA("BasePart") then
             pcall(function() p.Transparency=on and 1 or (p.Name=="HumanoidRootPart" and 1 or 0) end)
-        elseif p:IsA("Decal") then pcall(function() p.Transparency=on and 1 or 0 end) end
+        elseif p:IsA("Decal") then
+            pcall(function() p.Transparency=on and 1 or 0 end)
+        end
     end
 end
 
@@ -747,12 +870,13 @@ local function applyFreezeTime(on)
             if a and next(frozenAtm) then for k,v in pairs(frozenAtm) do pcall(function() a[k]=v end) end end
         end)
     else
-        pcall(function() RunService:UnbindFromRenderStep("GF_FreezeT") end); frozenAtm={}
+        pcall(function() RunService:UnbindFromRenderStep("GF_FreezeT") end)
+        frozenAtm={}
     end
 end
 
 -- ============================================================
--- AIMBOT  — hold key/mouse to aim, smooth = higher → slower
+-- AIMBOT  (mit Visual Check — kein Targeting durch Wände)
 -- ============================================================
 local fovCircle=mk("Frame",{Size=UDim2.new(0,240,0,240),AnchorPoint=Vector2.new(.5,.5),
     Position=UDim2.new(.5,0,.5,0),BackgroundTransparency=1,BorderSizePixel=0,Visible=false,ZIndex=50},gui)
@@ -761,23 +885,32 @@ local fovStroke=mk("UIStroke",{Color=T.accent,Thickness=1.5,Transparency=.35},fo
 rTC(function() fovStroke.Color=T.accent end)
 
 local aimbotKeyHeld=false
-local aimbotMouseHeld=false
 
--- Line of sight check
+-- Raycast Visual Check: prüft ob Ziel durch Wände/Glas sichtbar ist
 local function hasLineOfSight(targetPos)
     local hrp=getHRP(); if not hrp then return false end
     local origin=hrp.Position
     local direction=(targetPos-origin)
+
     local rayParams=RaycastParams.new()
     rayParams.FilterType=Enum.RaycastFilterType.Exclude
+    -- Eigenen Charakter + alle Spieler-Charaktere aus dem Raycast ausschließen
     local exclude={getChar()}
-    for _,p in ipairs(Players:GetPlayers()) do if p.Character then table.insert(exclude,p.Character) end end
+    for _,p in ipairs(Players:GetPlayers()) do
+        if p.Character then table.insert(exclude,p.Character) end
+    end
     rayParams.FilterDescendantsInstances=exclude
+
     local result=workspace:Raycast(origin,direction,rayParams)
-    if not result then return true end
+    if not result then
+        -- Kein Treffer = klare Sicht
+        return true
+    end
+    -- Glas/transparente Teile durchschauen
     local hit=result.Instance
     if hit and hit:IsA("BasePart") then
         if hit.Transparency>=0.7 then return true end
+        -- Glas-Material
         if hit.Material==Enum.Material.Glass or hit.Material==Enum.Material.ForceField then return true end
     end
     return false
@@ -796,9 +929,14 @@ local function getAimbotTarget()
                     if vis then
                         local d=(Vector2.new(pos.X,pos.Y)-center).Magnitude
                         if d<bestDist then
+                            -- Visual Check: kein Targeting durch Wände wenn aktiviert
                             if CFG.aimbotVisCheck then
-                                if hasLineOfSight(bone.Position) then bestDist=d; best=bone end
-                            else bestDist=d; best=bone end
+                                if hasLineOfSight(bone.Position) then
+                                    bestDist=d; best=bone
+                                end
+                            else
+                                bestDist=d; best=bone
+                            end
                         end
                     end
                 end
@@ -815,72 +953,15 @@ RunService:BindToRenderStep("GF_Aimbot",Enum.RenderPriority.Camera.Value,functio
     local r=CFG.aimbotFOV
     fovCircle.Size=UDim2.new(0,r*2,0,r*2)
     local rc=fovCircle:FindFirstChildOfClass("UICorner"); if rc then rc.CornerRadius=UDim.new(0,r) end
-    local held = aimbotKeyHeld or aimbotMouseHeld
-    if not held then return end
+    if not aimbotKeyHeld then return end
     local target=getAimbotTarget(); if not target then return end
-    -- Smooth: higher value = SLOWER (divide: low smooth = fast lerp, high smooth = slow lerp)
-    local lerpFactor = math.clamp(1 / CFG.aimbotSmooth, 0.01, 1.0)
-    pcall(function() cam.CFrame=cam.CFrame:Lerp(CFrame.new(cam.CFrame.Position,target.Position),lerpFactor) end)
+    pcall(function() cam.CFrame=cam.CFrame:Lerp(CFrame.new(cam.CFrame.Position,target.Position),CFG.aimbotSmooth/100) end)
 end)
 
 -- ============================================================
--- TRIGGERBOT  — fires when crosshair over enemy, only if key/LMB held
--- ============================================================
-local triggerbotActive = false
-local triggerbotMouseHeld = false
-local triggerbotKeyHeld = false
-local lastTriggerShot = 0
-
-RunService.Heartbeat:Connect(function()
-    if not CFG.triggerbot then return end
-    local held = triggerbotMouseHeld or triggerbotKeyHeld
-    if not held then return end
-    local now = tick()
-    if now - lastTriggerShot < CFG.triggerbotDelay then return end
-    -- Check if cursor is over an enemy
-    local center = cam.ViewportSize / 2
-    local unitRay = cam:ScreenPointToRay(center.X, center.Y)
-    local rayParams = RaycastParams.new()
-    rayParams.FilterType = Enum.RaycastFilterType.Exclude
-    local excl = {getChar()}
-    rayParams.FilterDescendantsInstances = excl
-    local result = workspace:Raycast(unitRay.Origin, unitRay.Direction * 1000, rayParams)
-    if result and result.Instance then
-        local hit = result.Instance
-        -- Check if hit part belongs to an enemy player
-        local hitChar = hit:FindFirstAncestorOfClass("Model")
-        if hitChar then
-            for _,plr in ipairs(Players:GetPlayers()) do
-                if plr ~= lp and plr.Character == hitChar then
-                    if CFG.aimbotTeamCheck and plr.Team == lp.Team then break end
-                    local hum = hitChar:FindFirstChildOfClass("Humanoid")
-                    if hum and hum.Health > 0 then
-                        -- Simulate click
-                        lastTriggerShot = now
-                        local vms = Instance.new("VirtualInputManager") pcall(function()
-                            -- fallback: fire tool
-                            local c=getChar()
-                            if c then
-                                local tool=c:FindFirstChildOfClass("Tool")
-                                if tool then
-                                    local remote=tool:FindFirstChild("RemoteEvent") or tool:FindFirstChildOfClass("RemoteEvent")
-                                    if remote then pcall(function() remote:FireServer() end) end
-                                end
-                            end
-                        end)
-                        break
-                    end
-                end
-            end
-        end
-    end
-end)
-
--- ============================================================
--- ESP  — optimized: billboard reused, boxes drawn each frame only
+-- ESP
 -- ============================================================
 local espData={}
--- Use ONE persistent drawing layer — clear only drawing frames, not billboard data
 local espFr=mk("Frame",{Size=UDim2.new(1,0,1,0),BackgroundTransparency=1,BorderSizePixel=0,ZIndex=10},gui)
 local skelFr=mk("Frame",{Size=UDim2.new(1,0,1,0),BackgroundTransparency=1,BorderSizePixel=0,ZIndex=11},gui)
 
@@ -896,6 +977,7 @@ local BONES={"Head","UpperTorso","LowerTorso","HumanoidRootPart",
     "LeftUpperArm","RightUpperArm","LeftLowerArm","RightLowerArm",
     "LeftHand","RightHand","LeftUpperLeg","RightUpperLeg",
     "LeftLowerLeg","RightLowerLeg","LeftFoot","RightFoot"}
+
 local SKEL_P={{"Head","UpperTorso"},{"UpperTorso","LowerTorso"},
     {"UpperTorso","LeftUpperArm"},{"LeftUpperArm","LeftLowerArm"},{"LeftLowerArm","LeftHand"},
     {"UpperTorso","RightUpperArm"},{"RightUpperArm","RightLowerArm"},{"RightLowerArm","RightHand"},
@@ -910,11 +992,13 @@ local function drawCBox(p,x,y,w,h,col)
     ln(x,y,cl,t); ln(x,y,t,cl); ln(x+w-cl,y,cl,t); ln(x+w-t,y,t,cl)
     ln(x,y+h-t,cl,t); ln(x,y+h-cl,t,cl); ln(x+w-cl,y+h-t,cl,t); ln(x+w-t,y+h-cl,t,cl)
 end
+
 local function drawFBox(p,x,y,w,h,col)
     local t=CFG.espLineThick
     local function ln(lx,ly,lw,lh) mk("Frame",{Size=UDim2.new(0,lw,0,lh),Position=UDim2.new(0,lx,0,ly),BackgroundColor3=col,BorderSizePixel=0,ZIndex=15},p) end
     ln(x,y,w,t); ln(x,y+h-t,w,t); ln(x,y,t,h); ln(x+w-t,y,t,h)
 end
+
 local function drawLine(p,a,b,col,thick)
     local dx,dy=b.X-a.X,b.Y-a.Y; local len=math.sqrt(dx*dx+dy*dy); if len<2 then return end
     mk("Frame",{Size=UDim2.new(0,len,0,thick or 1),Position=UDim2.new(0,a.X,0,a.Y),
@@ -922,12 +1006,8 @@ local function drawLine(p,a,b,col,thick)
         BackgroundColor3=col,BorderSizePixel=0,ZIndex=13},p)
 end
 
--- Throttle ESP drawing to every other frame to reduce lag
-local espFrameSkip = 0
 pcall(function() RunService:UnbindFromRenderStep("GF_ESP") end)
 RunService:BindToRenderStep("GF_ESP",Enum.RenderPriority.Camera.Value-1,function()
-    espFrameSkip = espFrameSkip + 1
-    if espFrameSkip % 2 ~= 0 then return end -- skip every other frame = 2x less work
     espFr:ClearAllChildren(); skelFr:ClearAllChildren()
     if not CFG.esp then cleanESP(); return end
     for _,plr in ipairs(Players:GetPlayers()) do
@@ -1051,7 +1131,8 @@ local function buildCH()
     end
     local function dot(sz)
         local f=mk("Frame",{Size=UDim2.new(0,sz,0,sz),AnchorPoint=Vector2.new(.5,.5),
-            Position=UDim2.new(.5,0,.5,0),BackgroundColor3=col,BorderSizePixel=0,ZIndex=52},xhF); rnd(f,sz/2)
+            Position=UDim2.new(.5,0,.5,0),BackgroundColor3=col,BorderSizePixel=0,ZIndex=52},xhF)
+        rnd(f,sz/2)
     end
     local g=math.floor(s*.22)
     if st==1 then ln(s/2-g,2,-(s/4+g/2+1),0);ln(s/2-g,2,s/4+g/2+1,0);ln(2,s/2-g,0,-(s/4+g/2+1));ln(2,s/2-g,0,s/4+g/2+1)
@@ -1093,7 +1174,8 @@ end)
 -- ============================================================
 -- POSITION MARKER
 -- ============================================================
-local lastPos=nil; local markerPart=nil
+local lastPos=nil
+local markerPart=nil
 local function spawnMarker(cf)
     if markerPart then for _,p in ipairs(markerPart) do pcall(function() p:Destroy() end) end; markerPart=nil end
     local p=Instance.new("Part"); p.Name="GF_Marker"; p.Anchored=true; p.CanCollide=false
@@ -1173,7 +1255,7 @@ btn("Move","Rejoin","Rejoin the same server",function()
 end)
 
 ---- COMBAT ----
-sec("Combat","Aimbot Key Binding")
+sec("Combat","Aimbot")
 do
     local aKeyDisp=mk("TextLabel",{
         Text="Aim Key:  [ "..tostring(CFG.aimbotKey):match("%.(%a+)$").." ]",
@@ -1182,75 +1264,32 @@ do
         TextXAlignment=Enum.TextXAlignment.Center},tabScrolls["Combat"])
     rnd(aKeyDisp,11); mk("UIStroke",{Color=T.border,Thickness=1.2},aKeyDisp)
     rTC(function() aKeyDisp.BackgroundColor3=T.accDark; aKeyDisp.TextColor3=T.accent end)
-    btn("Combat","Bind Aimbot Key  (keyboard or mouse)","Press any key OR mouse button to bind",function()
-        aKeyDisp.Text="Press key or click mouse button..."; aKeyDisp.TextColor3=T.txt
+    btn("Combat","Bind Aimbot Key","Press any key to set as aimbot hold-key",function()
+        aKeyDisp.Text="Press any key..."; aKeyDisp.TextColor3=T.txt
         local conn; conn=UserInputService.InputBegan:Connect(function(inp)
-            local name = ""
             if inp.UserInputType==Enum.UserInputType.Keyboard then
-                CFG.aimbotKey=inp.KeyCode; CFG.aimbotMouseBtn=nil
-                name=tostring(inp.KeyCode):match("%.(%a+)$") or "?"
-            elseif inp.UserInputType==Enum.UserInputType.MouseButton1 then
-                CFG.aimbotMouseBtn=Enum.UserInputType.MouseButton1; CFG.aimbotKey=Enum.KeyCode.Unknown
-                name="Mouse1 (LMB)"
-            elseif inp.UserInputType==Enum.UserInputType.MouseButton2 then
-                CFG.aimbotMouseBtn=Enum.UserInputType.MouseButton2; CFG.aimbotKey=Enum.KeyCode.Unknown
-                name="Mouse2 (RMB)"
-            elseif inp.UserInputType==Enum.UserInputType.MouseButton3 then
-                CFG.aimbotMouseBtn=Enum.UserInputType.MouseButton3; CFG.aimbotKey=Enum.KeyCode.Unknown
-                name="Mouse3 (MMB)"
-            else return end
-            aKeyDisp.Text="Aim Key:  [ "..name.." ]"; aKeyDisp.TextColor3=T.accent
-            conn:Disconnect(); saveConfig()
+                CFG.aimbotKey=inp.KeyCode
+                local kn=tostring(inp.KeyCode):match("%.(%a+)$") or "?"
+                aKeyDisp.Text="Aim Key:  [ "..kn.." ]"; aKeyDisp.TextColor3=T.accent
+                conn:Disconnect(); saveConfig()
+            end
         end)
     end)
-    note("Combat","Hold the bound key/button to aim — release to stop")
-    note("Combat","Smooth: LOW = fast snap  |  HIGH = slow smooth")
+    note("Combat","Hold the key above to aim — release to stop")
 end
-sec("Combat","Aimbot Settings")
 tog("Combat","Aimbot  (enable)","aimbot","Enable aimbot — hold Aim Key to aim",nil)
 tog("Combat","Team Check","aimbotTeamCheck","Skip teammates",nil)
-tog("Combat","Visual Check  (no wall target)","aimbotVisCheck","Only aim at targets not behind walls/glass",nil)
-sld("Combat","FOV Radius",20,500,CFG.aimbotFOV,5,"Aim search radius in pixels",function(v)
+tog("Combat","Visual Check  (kein Wall-Target)","aimbotVisCheck","Nur Targets anvisieren die nicht hinter Wänden/Glas sind",nil)
+sld("Combat","FOV Radius",20,500,CFG.aimbotFOV,5,"Target search radius",function(v)
     CFG.aimbotFOV=v
     fovCircle.Size=UDim2.new(0,v*2,0,v*2)
     local rc=fovCircle:FindFirstChildOfClass("UICorner"); if rc then rc.CornerRadius=UDim.new(0,v) end
 end)
-sld("Combat","Smooth  (1=snap  100=slow)",1,100,CFG.aimbotSmooth,1,"1=instant snap  100=very slow smooth",function(v) CFG.aimbotSmooth=v end)
+sld("Combat","Smooth  (1=instant)",1,100,CFG.aimbotSmooth,1,"Aim interpolation speed",function(v) CFG.aimbotSmooth=v end)
 sec("Combat","Aim Bone")
 btn("Combat","Head","Aim at head",function() CFG.aimbotBone="Head"; notify("Aimbot","Target: Head",2) end)
 btn("Combat","UpperTorso","Aim at torso",function() CFG.aimbotBone="UpperTorso"; notify("Aimbot","Target: Torso",2) end)
 btn("Combat","HumanoidRootPart","Aim at body center",function() CFG.aimbotBone="HumanoidRootPart"; notify("Aimbot","Target: Root",2) end)
-sec("Combat","Triggerbot")
-do
-    local tbKeyDisp=mk("TextLabel",{
-        Text="Triggerbot Key:  [ LMB (Mouse1) ]",
-        Size=UDim2.new(1,0,0,38),BackgroundColor3=T.accDark,TextColor3=T.accent,
-        TextSize=13,Font=Enum.Font.GothamBold,BorderSizePixel=0,
-        TextXAlignment=Enum.TextXAlignment.Center},tabScrolls["Combat"])
-    rnd(tbKeyDisp,11); mk("UIStroke",{Color=T.border,Thickness=1.2},tbKeyDisp)
-    rTC(function() tbKeyDisp.BackgroundColor3=T.accDark; tbKeyDisp.TextColor3=T.accent end)
-    btn("Combat","Bind Triggerbot Key","Press key or click mouse button to bind triggerbot",function()
-        tbKeyDisp.Text="Press key or click mouse..."; tbKeyDisp.TextColor3=T.txt
-        local conn; conn=UserInputService.InputBegan:Connect(function(inp)
-            local name=""
-            if inp.UserInputType==Enum.UserInputType.Keyboard then
-                CFG.triggerbotKey=inp.KeyCode; CFG.triggerbotMouse=nil
-                name=tostring(inp.KeyCode):match("%.(%a+)$") or "?"
-            elseif inp.UserInputType==Enum.UserInputType.MouseButton1 then
-                CFG.triggerbotMouse=Enum.UserInputType.MouseButton1; CFG.triggerbotKey=Enum.KeyCode.Unknown
-                name="LMB (Mouse1)"
-            elseif inp.UserInputType==Enum.UserInputType.MouseButton2 then
-                CFG.triggerbotMouse=Enum.UserInputType.MouseButton2; CFG.triggerbotKey=Enum.KeyCode.Unknown
-                name="RMB (Mouse2)"
-            else return end
-            tbKeyDisp.Text="Triggerbot Key:  [ "..name.." ]"; tbKeyDisp.TextColor3=T.accent
-            conn:Disconnect()
-        end)
-    end)
-end
-tog("Combat","Triggerbot  (enable)","triggerbot","Auto-fire when crosshair is on enemy — hold trigger key",nil)
-note("Combat","Only fires if enemy is visible within crosshair")
-sld("Combat","Triggerbot Delay (s)",0,1,CFG.triggerbotDelay,.01,"Delay between shots in seconds",function(v) CFG.triggerbotDelay=v end)
 sec("Combat","Protection")
 tog("Combat","Anti-Kick","antiKick","Block server-side kicks",function(on) applyAntiKick(on) end)
 tog("Combat","Anti-Detect","antiDetect","No PlatformStand — harder to detect",nil)
@@ -1342,107 +1381,9 @@ sld("ESP","Saturation %",0,100,math.floor(CFG.espColorS*100),1,"Color saturation
 sld("ESP","Brightness %",0,100,math.floor(CFG.espColorV*100),1,"Color brightness",function(v) CFG.espColorV=v/100 end)
 note("ESP","Green=H36 S90 V100  |  White=H0 S0 V100  |  Red=H0 S100 V100")
 
----- EMOTES ----
-sec("Emotes","Default Roblox Emotes")
-note("Emotes","Click any emote to play it — works in most games")
-local EMOTES = {
-    -- Default free emotes
-    {"Wave",         "Wave"},
-    {"Point",        "Point"},
-    {"Cheer",        "Cheer"},
-    {"Laugh",        "Laugh"},
-    {"Dance",        "Dance"},
-    {"Dance2",       "Dance 2"},
-    {"Dance3",       "Dance 3"},
-    -- R15 emotes
-    {"Salute",       "Salute"},
-    {"Tilt",         "Tilt"},
-    {"Shrug",        "Shrug"},
-    {"Stadium",      "Stadium"},
-    {"Tentacle",     "Tentacle"},
-    {"Woah",         "Woah"},
-    {"Hype",         "Hype"},
-    {"Charging",     "Charging"},
-    {"Life",         "Life"},
-    {"Agree",        "Agree"},
-    {"Disagree",     "Disagree"},
-    {"CommunityTalk","Community Talk"},
-    {"FireUp",       "Fire Up"},
-    {"Flex",         "Flex"},
-    {"Pose1",        "Pose 1"},
-    {"Pose2",        "Pose 2"},
-    {"Goofy",        "Goofy Run"},
-    {"BubbleMagic",  "Bubble Magic"},
-    {"Bow",          "Bow"},
-    {"Hello",        "Hello"},
-    {"DuckWalk",     "Duck Walk"},
-    {"Superhero",    "Superhero"},
-    {"Ninja",        "Ninja"},
-    {"Sit",          "Sit"},
-    {"Sleep",        "Sleep"},
-    {"Win",          "Winner"},
-    {"Lose",         "Loser"},
-    {"Swim",         "Swim"},
-    {"Swim2",        "Swim 2"},
-    {"Climb",        "Climb"},
-    {"Jump",         "Jump"},
-    {"Fall",         "Fall"},
-    {"Idle1",        "Idle"},
-    {"Run",          "Run"},
-    {"Walk",         "Walk"},
-    {"Kick",         "Kick"},
-    {"Punch",        "Punch"},
-    {"Block",        "Block"},
-    {"Carry",        "Carry"},
-}
-
-local function playEmote(emoteName)
-    local c=getChar(); if not c then return end
-    local hum=getHum(); if not hum then return end
-    -- Method 1: Use Animate script
-    local animate=c:FindFirstChild("Animate")
-    if animate then
-        local emoteEvent=animate:FindFirstChild("PlayEmote")
-        if emoteEvent then
-            pcall(function() emoteEvent:Fire(emoteName) end)
-            return
-        end
-    end
-    -- Method 2: Use HumanoidRootPart remote
-    pcall(function()
-        local args = {emoteName}
-        game:GetService("ReplicatedStorage"):WaitForChild("EmoteEvent",1):FireServer(unpack(args))
-    end)
-    -- Method 3: Direct animation (fallback)
-    pcall(function()
-        hum:GetPropertyChangedSignal("Jump"):Connect(function() end)
-        local args2={[1]=emoteName}
-        game:GetService("ReplicatedStorage"):FindFirstChild("EmoteEvent") and
-        game:GetService("ReplicatedStorage").EmoteEvent:FireServer(table.unpack(args2))
-    end)
-    notify("Emote",emoteName,1.5)
-end
-
--- Stop emote button first
-btn("Emotes","⏹  Stop Current Emote","Stop the currently playing emote",function()
-    local c=getChar(); if not c then return end
-    local hum=getHum(); if not hum then return end
-    pcall(function()
-        for _,track in ipairs(hum:GetPlayingAnimationTracks()) do
-            track:Stop()
-        end
-    end)
-    notify("Emote","Stopped",1)
-end)
-
-sec("Emotes","All Available Emotes")
-for _,e in ipairs(EMOTES) do
-    btn("Emotes",e[2],"Play emote: "..e[2],function() playEmote(e[1]) end)
-end
-
 ---- MAP ----
 sec("Map","Position Marker")
-btn("Map","Save Position  +  Spawn Arrow","Save your position and spawn a spinning marker",function()
+btn("Map","Save Position  +  Spawn Arrow","Save your position and spawn a marker",function()
     local hrp=getHRP()
     if hrp then lastPos=hrp.CFrame; spawnMarker(hrp.CFrame); notify("GLUHFIX","Position saved! Arrow spawned.",2) end
 end)
@@ -1454,56 +1395,16 @@ end)
 btn("Map","Remove Marker","Remove the spawned arrow marker",function()
     removeMarker(); notify("GLUHFIX","Marker removed.",2)
 end)
-
-sec("Map","Workspace File Explorer")
-note("Map","Click 'Scan' to explore all folders and objects in the map")
-btn("Map","Scan Entire Workspace","List all objects, folders and scripts in workspace",function()
-    -- Clear previous results
+sec("Map","Workspace Scanner")
+btn("Map","Scan Workspace","List all objects in workspace",function()
     for _,c in ipairs(tabScrolls["Map"]:GetChildren()) do if c.Name=="ER" then c:Destroy() end end
-    local ct=0
-    local function traverse(obj,depth)
-        if ct>1000 then return end; ct=ct+1
-        local row=mk("Frame",{Name="ER",Size=UDim2.new(1,0,0,22),
-            BackgroundColor3=depth%2==0 and T.row or T.panel,BorderSizePixel=0},tabScrolls["Map"])
-        rnd(row,5)
-        -- indent + icon based on class
-        local icon="▸"
-        if obj:IsA("Folder") then icon="📁"
-        elseif obj:IsA("Script") or obj:IsA("LocalScript") or obj:IsA("ModuleScript") then icon="📜"
-        elseif obj:IsA("Model") then icon="🧩"
-        elseif obj:IsA("BasePart") then icon="⬜"
-        elseif obj:IsA("Light") then icon="💡" end
-        mk("TextLabel",{
-            Text=("  "):rep(math.min(depth,5))..icon.." "..obj.Name,
-            Size=UDim2.new(.62,0,1,0),BackgroundTransparency=1,
-            TextColor3=T.txt,TextSize=10,Font=Enum.Font.GothamBold,
-            TextXAlignment=Enum.TextXAlignment.Left},row)
-        mk("TextLabel",{
-            Text=obj.ClassName,Size=UDim2.new(.38,0,1,0),
-            Position=UDim2.new(.62,0,0,0),BackgroundTransparency=1,
-            TextColor3=T.dim,TextSize=9,Font=Enum.Font.Gotham,
-            TextXAlignment=Enum.TextXAlignment.Right},row)
-        if depth<4 then
-            for _,ch in ipairs(obj:GetChildren()) do traverse(ch,depth+1) end
-        end
-    end
-    traverse(workspace,0)
-    notify("GLUHFIX","Scan complete: "..ct.." objects",3)
-end)
-btn("Map","Scan game.ReplicatedStorage","List contents of ReplicatedStorage",function()
-    for _,c in ipairs(tabScrolls["Map"]:GetChildren()) do if c.Name=="ER" then c:Destroy() end end
-    local ct=0
-    local function traverse(obj,depth)
-        if ct>500 then return end; ct=ct+1
-        local row=mk("Frame",{Name="ER",Size=UDim2.new(1,0,0,22),
-            BackgroundColor3=depth%2==0 and T.row or T.panel,BorderSizePixel=0},tabScrolls["Map"])
-        rnd(row,5)
-        mk("TextLabel",{Text=("  "):rep(math.min(depth,5)).."▸ "..obj.Name,Size=UDim2.new(.62,0,1,0),BackgroundTransparency=1,TextColor3=T.txt,TextSize=10,Font=Enum.Font.GothamBold,TextXAlignment=Enum.TextXAlignment.Left},row)
-        mk("TextLabel",{Text=obj.ClassName,Size=UDim2.new(.38,0,1,0),Position=UDim2.new(.62,0,0,0),BackgroundTransparency=1,TextColor3=T.dim,TextSize=9,Font=Enum.Font.Gotham,TextXAlignment=Enum.TextXAlignment.Right},row)
+    local ct=0; local function traverse(obj,depth)
+        if ct>600 then return end; ct=ct+1
+        local row=mk("Frame",{Name="ER",Size=UDim2.new(1,0,0,22),BackgroundColor3=depth%2==0 and T.row or T.panel,BorderSizePixel=0},tabScrolls["Map"]); rnd(row,5)
+        mk("TextLabel",{Text=("  "):rep(math.min(depth,4)).."▸ "..obj.Name,Size=UDim2.new(.65,0,1,0),BackgroundTransparency=1,TextColor3=T.txt,TextSize=10,Font=Enum.Font.GothamBold,TextXAlignment=Enum.TextXAlignment.Left},row)
+        mk("TextLabel",{Text=obj.ClassName,Size=UDim2.new(.35,0,1,0),Position=UDim2.new(.65,0,0,0),BackgroundTransparency=1,TextColor3=T.dim,TextSize=9,Font=Enum.Font.Gotham,TextXAlignment=Enum.TextXAlignment.Right},row)
         if depth<3 then for _,ch in ipairs(obj:GetChildren()) do traverse(ch,depth+1) end end
-    end
-    pcall(function() traverse(game:GetService("ReplicatedStorage"),0) end)
-    notify("GLUHFIX","ReplicatedStorage: "..ct.." objects",3)
+    end; traverse(workspace,0); notify("GLUHFIX","Scan: "..ct.." objects",2)
 end)
 btn("Map","Highlight All Parts  (5s)","Draw selection boxes on all parts for 5s",function()
     for _,v in ipairs(workspace:GetDescendants()) do
@@ -1518,71 +1419,86 @@ btn("Map","Highlight All Parts  (5s)","Draw selection boxes on all parts for 5s"
 end)
 
 -- ============================================================
--- CONFIG TAB
+-- ⭐ CONFIG TAB  —  speichert ALLES persistent
 -- ============================================================
-sec("Config","Saved Settings")
-note("Config","All toggles & sliders save automatically on change.")
-note("Config","They reload automatically on next script start.")
-btn("Config","Save Now","Save all settings immediately",function()
-    saveConfig(); notify("GLUHFIX","Config saved! ✓",3)
+sec("Config","Gespeicherte Einstellungen")
+note("Config","Alle Toggles & Slider werden automatisch beim Ändern gespeichert.")
+note("Config","Sie laden sich beim nächsten Script-Start automatisch neu.")
+
+btn("Config","💾  Jetzt Speichern","Alle Einstellungen sofort speichern",function()
+    saveConfig(); notify("GLUHFIX","Config gespeichert! ✓",3)
 end)
-btn("Config","Reset Config","Delete all saved values",function()
+btn("Config","🔄  Config zurücksetzen","Alle gespeicherten Werte löschen",function()
     pcall(function()
-        for attr,_ in pairs(lp:GetAttributes()) do
+        for _,attr in ipairs(lp:GetAttributes()) do
             if tostring(attr):sub(1,4)=="GF9_" then lp:SetAttribute(attr,nil) end
         end
     end)
-    notify("GLUHFIX","Config reset! Restart script.",3)
+    notify("GLUHFIX","Config zurückgesetzt! Neu starten.",3)
 end)
 
-sec("Config","Active Features — Live Status")
+sec("Config","Aktive Features — Übersicht")
+
+-- Live-Status-Label für alle wichtigen Features
+local statusScroll=tabScrolls["Config"]
 local statusLabels={}
+
 local featureNames={
     {"fly","Fly"},{"noclip","Noclip"},{"speed","Speed Boost"},{"highJump","High Jump"},
     {"spinBot","Spinbot"},{"bunnyHop","Bunny Hop"},{"autoJump","Auto Jump"},
     {"infinite_jump","Infinite Jump"},{"antiAfk","Anti-AFK"},{"antiLag","Anti-Lag"},
-    {"aimbot","Aimbot"},{"aimbotVisCheck","Visual Check"},{"aimbotTeamCheck","Team Check"},
-    {"triggerbot","Triggerbot"},{"antiKick","Anti-Kick"},{"antiDetect","Anti-Detect"},
+    {"aimbot","Aimbot"},{"aimbotVisCheck","Aimbot Visual Check"},{"aimbotTeamCheck","Team Check"},
+    {"antiKick","Anti-Kick"},{"antiDetect","Anti-Detect"},
     {"invisible","Invisible"},{"headless","Headless"},
     {"esp","ESP"},{"fullbright","Fullbright"},{"noFog","No Fog"},
     {"crosshair","Crosshair"},{"freezeTime","Freeze Time"},
     {"showCoords","Coords"},{"showFPS","FPS Counter"},{"chatSpy","Chat Spy"},
 }
-local statusFrame=mk("Frame",{Size=UDim2.new(1,0,0,#featureNames*26+16),BackgroundColor3=T.accDark,BorderSizePixel=0},tabScrolls["Config"])
+
+local statusFrame=mk("Frame",{Size=UDim2.new(1,0,0,#featureNames*26+16),BackgroundColor3=T.accDark,BorderSizePixel=0},statusScroll)
 rnd(statusFrame,11)
 mk("UIListLayout",{Padding=UDim.new(0,2)},statusFrame); pad(statusFrame,10,10,8,8)
+
 for _,pair in ipairs(featureNames) do
     local key,name=pair[1],pair[2]
     local row=mk("Frame",{Size=UDim2.new(1,0,0,22),BackgroundTransparency=1},statusFrame)
     mk("TextLabel",{Text=name,Size=UDim2.new(.7,0,1,0),BackgroundTransparency=1,
-        TextColor3=T.dim,TextSize=11,Font=Enum.Font.GothamBold,TextXAlignment=Enum.TextXAlignment.Left},row)
-    local valLabel=mk("TextLabel",{Text="off",Size=UDim2.new(.3,0,1,0),Position=UDim2.new(.7,0,0,0),
-        BackgroundTransparency=1,TextSize=11,Font=Enum.Font.GothamBold,TextXAlignment=Enum.TextXAlignment.Right},row)
+        TextColor3=T.dim,TextSize=11,Font=Enum.Font.GothamBold,
+        TextXAlignment=Enum.TextXAlignment.Left},row)
+    local valLabel=mk("TextLabel",{Text="OFF",Size=UDim2.new(.3,0,1,0),Position=UDim2.new(.7,0,0,0),
+        BackgroundTransparency=1,TextSize=11,Font=Enum.Font.GothamBold,
+        TextXAlignment=Enum.TextXAlignment.Right},row)
     statusLabels[key]=valLabel
 end
+
+-- Live-Update der Status-Labels
 RunService.Heartbeat:Connect(function()
     if activeTab~="Config" then return end
     for key,lbl in pairs(statusLabels) do
         pcall(function()
-            local on=CFG[key]; lbl.Text=on and "ON" or "off"; lbl.TextColor3=on and T.green or T.dim
+            local on=CFG[key]
+            lbl.Text=on and "ON" or "off"
+            lbl.TextColor3=on and T.green or T.dim
         end)
     end
 end)
 
-sec("Config","Export")
-btn("Config","Print Config to Output (F9)","Print all values to Roblox output",function()
+sec("Config","Export / Import (Print)")
+btn("Config","📋  Config in Output drucken","Druckt alle Werte ins F9-Output",function()
     print("=== GLUHFIX v9.0 Config ===")
     for k,v in pairs(CFG) do
         local t=type(v)
-        if t=="boolean" or t=="number" then print(("  %-28s = %s"):format(k,tostring(v))) end
+        if t=="boolean" or t=="number" then
+            print(("  %-28s = %s"):format(k, tostring(v)))
+        end
     end
-    notify("GLUHFIX","Config printed to Output (F9)",3)
+    notify("GLUHFIX","Config ins Output gedruckt (F9)",3)
 end)
 
 ---- SETTINGS ----
 sec("Settings","Keybinds")
 local kbDisp=mk("TextLabel",{
-    Text="Toggle Key:  [ LeftControl ]",
+    Text="Toggle Key:  [ "..tostring(CFG.toggleKey):match("%.(%a+)$").." ]",
     Size=UDim2.new(1,0,0,38),BackgroundColor3=T.accDark,TextColor3=T.accent,
     TextSize=14,Font=Enum.Font.GothamBold,BorderSizePixel=0,
     TextXAlignment=Enum.TextXAlignment.Center},tabScrolls["Settings"])
@@ -1617,7 +1533,7 @@ sec("Settings","Info & Tools")
 tog("Settings","Coordinates","showCoords","Show XYZ position on screen",nil)
 tog("Settings","FPS Counter","showFPS","Show FPS on screen",nil)
 tog("Settings","Chat Spy","chatSpy","Log all chat messages to output",nil)
-btn("Settings","Print Players + IDs","Print all player names and user IDs to output",function()
+btn("Settings","Print Players + IDs","Print all player names and user IDs to output (F9)",function()
     for _,p in ipairs(Players:GetPlayers()) do
         print(("[GF9] %s  ID:%d  Team:%s"):format(p.Name,p.UserId,tostring(p.Team)))
     end; notify("GLUHFIX","IDs printed — open F9",2)
@@ -1644,7 +1560,7 @@ Players.PlayerAdded:Connect(function(p)
 end)
 
 -- ============================================================
--- RESPAWN HANDLER
+-- RESPAWN HANDLER  —  alle aktiven Features bleiben aktiv
 -- ============================================================
 lp.CharacterAdded:Connect(function(c)
     task.wait(.65)
@@ -1663,99 +1579,33 @@ lp.CharacterAdded:Connect(function(c)
 end)
 
 -- ============================================================
--- KEYBINDS  —  keyboard + mouse support
+-- KEYBINDS
 -- ============================================================
 UserInputService.InputBegan:Connect(function(inp,gpe)
-    if gpe and inp.KeyCode~=CFG.toggleKey then return end
-    -- Toggle menu
+    if gpe then return end
     if inp.KeyCode==CFG.toggleKey then showWin(not Win.Visible) end
-    -- Aimbot key (keyboard)
-    if inp.KeyCode==CFG.aimbotKey and CFG.aimbotKey~=Enum.KeyCode.Unknown then
-        aimbotKeyHeld=true
-    end
-    -- Aimbot mouse button
-    if CFG.aimbotMouseBtn and inp.UserInputType==CFG.aimbotMouseBtn then
-        aimbotMouseHeld=true
-    end
-    -- Triggerbot key
-    if CFG.triggerbotKey~=Enum.KeyCode.Unknown and inp.KeyCode==CFG.triggerbotKey then
-        triggerbotKeyHeld=true
-    end
-    -- Triggerbot mouse
-    if CFG.triggerbotMouse and inp.UserInputType==CFG.triggerbotMouse then
-        triggerbotMouseHeld=true
-    end
+    if inp.KeyCode==CFG.aimbotKey then aimbotKeyHeld=true end
 end)
 UserInputService.InputEnded:Connect(function(inp)
     if inp.KeyCode==CFG.aimbotKey then aimbotKeyHeld=false end
-    if CFG.aimbotMouseBtn and inp.UserInputType==CFG.aimbotMouseBtn then aimbotMouseHeld=false end
-    if CFG.triggerbotKey~=Enum.KeyCode.Unknown and inp.KeyCode==CFG.triggerbotKey then triggerbotKeyHeld=false end
-    if CFG.triggerbotMouse and inp.UserInputType==CFG.triggerbotMouse then triggerbotMouseHeld=false end
 end)
 
 -- ============================================================
--- WELCOME ANIMATION — cinematic intro, auto-closes, guaranteed destroy
+-- OPEN MENU AFTER UNLOCK  (wird nach Password-Screen gezeigt)
 -- ============================================================
+switchTab("Move")
+hLine.Size = UDim2.new(1,0,0,2)
+MiniBtn.Visible = false
+Win.Size = UDim2.new(0,700,0,640)
+Win.Position = UDim2.new(.5,0,.5,0)
+Win.BackgroundTransparency = 0
+-- Fenster erst zeigen wenn passwort eingegeben
+Win.Visible = false
+
+-- Nach Unlock automatisch öffnen
 task.spawn(function()
-    local WA = mk("Frame",{
-        Size=UDim2.new(1,0,1,0), BackgroundColor3=Color3.fromRGB(0,0,0),
-        BackgroundTransparency=0, BorderSizePixel=0, ZIndex=500
-    }, gui)
-    -- failsafe: max 10s
-    task.delay(10, function() pcall(function() WA:Destroy() end) end)
-
-    -- Cinematic bars
-    local barTop = mk("Frame",{Size=UDim2.new(1,0,0,90),Position=UDim2.new(0,0,0,0),BackgroundColor3=Color3.fromRGB(0,0,0),BorderSizePixel=0,ZIndex=502},WA)
-    local barBot = mk("Frame",{Size=UDim2.new(1,0,0,90),Position=UDim2.new(0,0,1,-90),BackgroundColor3=Color3.fromRGB(0,0,0),BorderSizePixel=0,ZIndex=502},WA)
-    task.wait(.05)
-
-    -- Scan line
-    local scan = mk("Frame",{Size=UDim2.new(1,0,0,2),Position=UDim2.new(0,0,0,90),BackgroundColor3=Color3.fromRGB(200,200,200),BackgroundTransparency=.3,BorderSizePixel=0,ZIndex=504},WA)
-    tw(scan,.5,{Position=UDim2.new(0,0,1,-92),BackgroundTransparency=.9},Enum.EasingStyle.Linear)
-    task.wait(.38)
-
-    -- "Hello," fades + rises
-    local hello=mk("TextLabel",{Text="Hello,",Size=UDim2.new(1,0,0,44),AnchorPoint=Vector2.new(.5,.5),Position=UDim2.new(.5,0,.4,20),BackgroundTransparency=1,TextColor3=Color3.fromRGB(140,140,140),TextSize=30,Font=Enum.Font.GothamBold,TextTransparency=1,ZIndex=506},WA)
-    tw(hello,.3,{TextTransparency=0,Position=UDim2.new(.5,0,.4,0)},Enum.EasingStyle.Quart,Enum.EasingDirection.Out)
-    task.wait(.26)
-
-    -- Name typewriter
-    local nameL=mk("TextLabel",{Text="",Size=UDim2.new(1,0,0,80),AnchorPoint=Vector2.new(.5,.5),Position=UDim2.new(.5,0,.535,0),BackgroundTransparency=1,TextColor3=Color3.fromRGB(255,255,255),TextSize=62,Font=Enum.Font.GothamBold,TextTransparency=0,ZIndex=506},WA)
-    for i=1,#lp.Name do
-        if not WA.Parent then return end
-        nameL.Text=lp.Name:sub(1,i)
-        nameL.TextColor3=(i%2==0) and Color3.fromRGB(255,255,255) or Color3.fromRGB(200,200,200)
-        task.wait(.055)
-    end
-    nameL.TextColor3=Color3.fromRGB(255,255,255)
-    task.wait(.08)
-
-    -- Accent line
-    local acLine=mk("Frame",{Size=UDim2.new(0,0,0,2),AnchorPoint=Vector2.new(.5,.5),Position=UDim2.new(.5,0,.626,0),BackgroundColor3=Color3.fromRGB(220,220,220),BorderSizePixel=0,ZIndex=506},WA)
-    tw(acLine,.5,{Size=UDim2.new(.26,0,0,2)},Enum.EasingStyle.Expo,Enum.EasingDirection.Out)
-    local tag=mk("TextLabel",{Text="G L U H F I X   v 9 . 0",Size=UDim2.new(1,0,0,18),AnchorPoint=Vector2.new(.5,.5),Position=UDim2.new(.5,0,.69,0),BackgroundTransparency=1,TextColor3=Color3.fromRGB(70,70,70),TextSize=11,Font=Enum.Font.Gotham,TextTransparency=1,ZIndex=506,TextXAlignment=Enum.TextXAlignment.Center},WA)
-    task.wait(.18)
-    tw(tag,.35,{TextTransparency=0},Enum.EasingStyle.Quart)
-
-    -- Hold ~3 seconds
-    task.wait(1.4)
-
-    -- Outro: text flies up
-    tw(hello,.25,{TextTransparency=1,Position=UDim2.new(.5,0,.37,0)},Enum.EasingStyle.Quart,Enum.EasingDirection.In)
-    tw(nameL,.25,{TextTransparency=1,Position=UDim2.new(.5,0,.50,0)},Enum.EasingStyle.Quart,Enum.EasingDirection.In)
-    tw(acLine,.2,{BackgroundTransparency=1})
-    tw(tag,.2,{TextTransparency=1})
-    task.wait(.15)
-    -- Bars slam out
-    tw(barTop,.3,{Position=UDim2.new(0,0,0,-90)},Enum.EasingStyle.Quart,Enum.EasingDirection.In)
-    tw(barBot,.3,{Position=UDim2.new(0,0,1,0)},Enum.EasingStyle.Quart,Enum.EasingDirection.In)
-    task.wait(.22)
-    -- DESTROY — no transparency tween on root frame
-    pcall(function() WA:Destroy() end)
-    -- Open menu
-    Win.Visible=true; Win.BackgroundTransparency=0
-    hLine.Size=UDim2.new(1,0,0,2)
-    switchTab("Move")
+    repeat task.wait(.1) until _guiUnlocked
+    Win.Visible=true
 end)
 
-print("⚡ GLUHFIX v9.0 loaded — Hello, "..lp.Name.." | Toggle: [Left Ctrl]")
+print("⚡ GLUHFIX v9.0 loaded — He
