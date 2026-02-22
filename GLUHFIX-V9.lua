@@ -1608,4 +1608,4 @@ task.spawn(function()
     Win.Visible=true
 end)
 
-print("⚡ GLUHFIX v9.0 loaded — He
+print("⚡ GLUHFIX v9.0 loaded — Hello, "..lp.Name.." | Passwort: GLUHFIX-V9 | Toggle: [Insert]")
