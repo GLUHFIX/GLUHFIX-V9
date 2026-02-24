@@ -993,15 +993,9 @@ local function getTargetBone(char)
 end
 
 local function getPredictedPosition(bone)
-    -- Velocity-basierte Target Prediction für bewegende Ziele
-    local part = bone
-    if not part or not part:IsA("BasePart") then return bone.Position end
-    local vel = part.Velocity
-    -- Distanz zur Kamera für Prediction-Stärke
-    local dist = (part.Position - cam.CFrame.Position).Magnitude
-    local pingApprox = 0.08 -- ~80ms ping approximation
-    local predicted = part.Position + vel * pingApprox * (dist / 50)
-    return predicted
+    -- Nur direkte Position, keine Velocity-Prediction (verursacht Zoom-Jitter)
+    if not bone or not bone:IsA("BasePart") then return bone.Position end
+    return bone.Position
 end
 
 local function getClosestTarget()
@@ -1032,23 +1026,18 @@ local function getClosestTarget()
     return best
 end
 
--- BYPASS: Kamera setzen über alle bekannten Methoden gleichzeitig
+-- BYPASS: Kamera setzen — nur eine Methode pro Frame, kein Konflikt
 local function bypassSetCamera(targetCF)
-    -- Methode 1: direkt
-    pcall(function() cam.CFrame = targetCF end)
-    -- Methode 2: sethiddenproperty (umgeht ReadOnly)
-    pcall(function()
-        if sethiddenproperty then
-            sethiddenproperty(cam, "CFrame", targetCF)
-        end
-    end)
-    -- Methode 3: CameraType Custom erzwingen dann setzen
-    pcall(function()
-        if cam.CameraType ~= Enum.CameraType.Custom then
-            cam.CameraType = Enum.CameraType.Custom
-        end
-        cam.CFrame = targetCF
-    end)
+    -- Methode 1: direkt (funktioniert in 90% aller Spiele)
+    local ok = pcall(function() cam.CFrame = targetCF end)
+    if not ok then
+        -- Methode 2: sethiddenproperty Fallback (nur wenn Methode 1 failed)
+        pcall(function()
+            if sethiddenproperty then
+                sethiddenproperty(cam, "CFrame", targetCF)
+            end
+        end)
+    end
 end
 
 -- ============================================================
@@ -1326,7 +1315,7 @@ RunService:BindToRenderStep("GF_Master", Enum.RenderPriority.Camera.Value, funct
 
         local held = isKbHeld("aimbot")
         if held then
-            -- BYPASS: AutoRotate deaktivieren damit Charakter-Rotation Aimbot nicht stört
+            -- BYPASS: AutoRotate deaktivieren + CameraType einmal beim ersten Drücken setzen
             if not aimbotWasHeld then
                 aimbotWasHeld = true
                 pcall(function()
@@ -1336,10 +1325,11 @@ RunService:BindToRenderStep("GF_Master", Enum.RenderPriority.Camera.Value, funct
                         hum.AutoRotate = false
                     end
                 end)
-                -- BYPASS: CameraType auf Custom zwingen
                 pcall(function()
                     aimbotOrigCamType = cam.CameraType
-                    cam.CameraType = Enum.CameraType.Custom
+                    if cam.CameraType ~= Enum.CameraType.Custom then
+                        cam.CameraType = Enum.CameraType.Custom
+                    end
                 end)
             end
 
