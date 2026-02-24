@@ -1132,6 +1132,24 @@ end)
 -- MASTER RENDER LOOP
 -- ============================================================
 local espFrameCount=0
+local lastESPClear=tick()
+
+-- Full ESP clear every 5 minutes to prevent lag buildup
+task.spawn(function()
+    while true do
+        task.wait(300)
+        for plr,d in pairs(espData) do
+            if d.bb then pcall(function() d.bb:Destroy() end) end
+            if d.hl then pcall(function() d.hl:Destroy() end) end
+            if d.boxFr then pcall(function() d.boxFr:Destroy() end) end
+            if d.skelFrP then pcall(function() d.skelFrP:Destroy() end) end
+        end
+        espData={}
+        pcall(function() collectgarbage("collect") end)
+        pcall(function() collectgarbage("collect") end)
+        print("[GF10] ESP cleared — memory freed")
+    end
+end)
 
 RunService:BindToRenderStep("GF_Master", Enum.RenderPriority.Camera.Value, function(dt)
     espFrameCount = espFrameCount + 1
@@ -1988,14 +2006,14 @@ btn("Scripte","🎯  Fling Script  —  execute","Loads and starts the Ultimate 
     end)
 end)
 
-btn("Scripte","⚔️  Rivalen Script  —  execute","Loads and starts the Rivalen Script",function()
-    notify("GLUHFIX","Rivalen Script loading...",3)
-    task.spawn(function()
-        pcall(function()
-            loadstring(game:HttpGet("https://pastebin.com/raw/zWhb1mMS"))()
-        end)
-    end)
-end)
+local csFrame=mk("Frame",{Size=UDim2.new(1,0,0,80),BackgroundColor3=Color3.fromRGB(10,10,13),BorderSizePixel=0},tabScrolls["Scripte"])
+rnd(csFrame,14); mk("UIStroke",{Color=Color3.fromRGB(50,50,62),Thickness=1.5},csFrame)
+mk("TextLabel",{Text="🔜  MORE SCRIPTS",Size=UDim2.new(1,0,0,38),Position=UDim2.new(0,0,0,6),
+    BackgroundTransparency=1,TextColor3=Color3.fromRGB(160,160,175),
+    TextSize=20,Font=Enum.Font.GothamBold,TextXAlignment=Enum.TextXAlignment.Center},csFrame)
+mk("TextLabel",{Text="COMING SOON",Size=UDim2.new(1,0,0,30),Position=UDim2.new(0,0,0,42),
+    BackgroundTransparency=1,TextColor3=Color3.fromRGB(90,90,105),
+    TextSize=14,Font=Enum.Font.GothamBold,TextXAlignment=Enum.TextXAlignment.Center},csFrame)
 
 ---- KEYBINDS ----
 sec("Keybinds","Universal Keybind System")
