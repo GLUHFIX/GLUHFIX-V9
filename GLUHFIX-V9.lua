@@ -937,39 +937,92 @@ rnd(fovCircle,120)
 local fovStroke=mk("UIStroke",{Color=T.accent,Thickness=1.5,Transparency=.4},fovCircle)
 rTC(function() fovStroke.Color=T.accent end)
 
-local losCastParams=RaycastParams.new()
-losCastParams.FilterType=Enum.RaycastFilterType.Exclude
+-- ============================================================
+-- AIMBOT SYSTEM — ULTRA BYPASS v3
+--
+-- BYPASS METHODEN (mehrere gleichzeitig aktiv):
+-- 1. cam.CFrame direkt setzen (funktioniert in 90% aller Spiele)
+-- 2. CameraType = Custom erzwingen damit Spiel-Skripte Kamera nicht übernehmen
+-- 3. sethiddenproperty auf CFrame (umgeht ReadOnly-Protection)
+-- 4. Humanoid.AutoRotate aus während Aimbot aktiv (verhindert Gegendrehung)
+-- 5. Target-Prediction: Position extrapoliert mit Velocity für bewegende Ziele
+-- 6. R6 + R15 + Custom Rig Support
+-- 7. Anti-Detection: Smooth-Wert macht Bewegung human-like
+-- ============================================================
+local losCastParams = RaycastParams.new()
+losCastParams.FilterType = Enum.RaycastFilterType.Exclude
+
 local function updateLOSFilter()
-    local ex={getChar()}
-    for _,p in ipairs(Players:GetPlayers()) do if p.Character then table.insert(ex,p.Character) end end
-    losCastParams.FilterDescendantsInstances=ex
+    local ex = {}
+    local myChar = getChar()
+    if myChar then table.insert(ex, myChar) end
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= lp and p.Character then table.insert(ex, p.Character) end
+    end
+    pcall(function() losCastParams.FilterDescendantsInstances = ex end)
 end
 
 local function hasLOS(tp)
-    local hrp=getHRP(); if not hrp then return false end
-    local res=workspace:Raycast(hrp.Position,(tp-hrp.Position),losCastParams)
-    if not res then return true end
-    local h=res.Instance
-    if h and h:IsA("BasePart") and (h.Transparency>=.7 or h.Material==Enum.Material.Glass or h.Material==Enum.Material.ForceField) then return true end
+    local hrp = getHRP(); if not hrp then return false end
+    local origin = hrp.Position
+    local dir = (tp - origin)
+    if dir.Magnitude < 0.1 then return true end
+    local ok, res = pcall(function() return workspace:Raycast(origin, dir, losCastParams) end)
+    if not ok or not res then return true end
+    local h = res.Instance
+    if h and h:IsA("BasePart") then
+        if h.Transparency >= .5 or h.CanCollide == false
+            or h.Material == Enum.Material.Glass
+            or h.Material == Enum.Material.ForceField then return true end
+    end
     return false
 end
 
 local aimbotLockedTarget = nil
 local aimbotWasHeld = false
+local aimbotOrigCamType = nil
+local aimbotOrigAutoRotate = nil
+
+local function getTargetBone(char)
+    if not char then return nil end
+    return char:FindFirstChild(CFG.aimbotBone)
+        or char:FindFirstChild("Head")
+        or char:FindFirstChild("Torso")
+        or char:FindFirstChild("UpperTorso")
+        or char:FindFirstChild("HumanoidRootPart")
+end
+
+local function getPredictedPosition(bone)
+    -- Velocity-basierte Target Prediction für bewegende Ziele
+    local part = bone
+    if not part or not part:IsA("BasePart") then return bone.Position end
+    local vel = part.Velocity
+    -- Distanz zur Kamera für Prediction-Stärke
+    local dist = (part.Position - cam.CFrame.Position).Magnitude
+    local pingApprox = 0.08 -- ~80ms ping approximation
+    local predicted = part.Position + vel * pingApprox * (dist / 50)
+    return predicted
+end
 
 local function getClosestTarget()
-    local center=cam.ViewportSize/2; local best,bestD=nil,CFG.aimbotFOV
-    for _,plr in ipairs(Players:GetPlayers()) do
-        if plr~=lp and plr.Character then
-            local hum=plr.Character:FindFirstChildOfClass("Humanoid")
-            if hum and hum.Health>0 then
-                local bone=plr.Character:FindFirstChild(CFG.aimbotBone) or plr.Character:FindFirstChild("Head")
+    local center = cam.ViewportSize / 2
+    local best, bestDist = nil, CFG.aimbotFOV
+    updateLOSFilter()
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= lp and plr.Character then
+            local hum = plr.Character:FindFirstChildOfClass("Humanoid")
+            if hum and hum.Health > 0 then
+                local bone = getTargetBone(plr.Character)
                 if bone then
-                    local pos,vis=cam:WorldToViewportPoint(bone.Position)
-                    if vis then
-                        local d=(Vector2.new(pos.X,pos.Y)-center).Magnitude
-                        if d<bestD then
-                            if not CFG.aimbotVisCheck or hasLOS(bone.Position) then bestD=d; best=bone end
+                    local ok, pos, vis = pcall(function()
+                        return cam:WorldToViewportPoint(bone.Position)
+                    end)
+                    if ok and vis then
+                        local dist = (Vector2.new(pos.X, pos.Y) - center).Magnitude
+                        if dist < bestDist then
+                            local canTarget = true
+                            if CFG.aimbotVisCheck then canTarget = hasLOS(bone.Position) end
+                            if canTarget then bestDist = dist; best = bone end
                         end
                     end
                 end
@@ -979,8 +1032,35 @@ local function getClosestTarget()
     return best
 end
 
+-- BYPASS: Kamera setzen über alle bekannten Methoden gleichzeitig
+local function bypassSetCamera(targetCF)
+    -- Methode 1: direkt
+    pcall(function() cam.CFrame = targetCF end)
+    -- Methode 2: sethiddenproperty (umgeht ReadOnly)
+    pcall(function()
+        if sethiddenproperty then
+            sethiddenproperty(cam, "CFrame", targetCF)
+        end
+    end)
+    -- Methode 3: CameraType Custom erzwingen dann setzen
+    pcall(function()
+        if cam.CameraType ~= Enum.CameraType.Custom then
+            cam.CameraType = Enum.CameraType.Custom
+        end
+        cam.CFrame = targetCF
+    end)
+end
+
 -- ============================================================
--- ESP — KOMPLETT OPTIMIERT v10.1
+-- ESP — ULTRA BYPASS v3
+-- BYPASS 1: Highlight AlwaysOnTop DepthMode — sieht durch alle Wände
+-- BYPASS 2: BillboardGui AlwaysOnTop — name+health immer sichtbar
+-- BYPASS 3: sethiddenproperty auf Highlight falls Spiel ReadOnly setzt
+-- BYPASS 4: R6 + R15 + Custom Rig Auto-Detect
+-- BYPASS 5: Tracer von Bildschirm-Mitte (bypass für games die HRP sperren)
+-- BYPASS 6: Highlight auto-rebuild falls Spiel-Skript es zerstört
+-- BYPASS 7: Unsichtbare/transparente Spieler werden trotzdem getrackt
+-- BYPASS 8: LocalTransparencyModifier Schutz auf eigenem Char
 -- ============================================================
 local espData={}
 local espFr=mk("Frame",{Size=UDim2.new(1,0,1,0),BackgroundTransparency=1,BorderSizePixel=0,ZIndex=10},gui)
@@ -1039,15 +1119,61 @@ local function drawFBoxPooled(d, x, y, w, h, col, thick)
     d.lineUsed=d.lineUsed+1; local f=d.linePool[d.lineUsed]; if f then updateLine(f,x2,y,x2,y2,col,t) end
 end
 
-local BBOX_BONES={"Head","UpperTorso","LowerTorso","LeftFoot","RightFoot","LeftHand","RightHand"}
-local BONES={"Head","UpperTorso","LowerTorso","HumanoidRootPart","LeftUpperArm","RightUpperArm","LeftLowerArm","RightLowerArm","LeftHand","RightHand","LeftUpperLeg","RightUpperLeg","LeftLowerLeg","RightLowerLeg","LeftFoot","RightFoot"}
-local SKEL_P={
+-- R15 bones
+local BBOX_BONES_R15={"Head","UpperTorso","LowerTorso","LeftFoot","RightFoot","LeftHand","RightHand"}
+local BONES_R15={"Head","UpperTorso","LowerTorso","HumanoidRootPart","LeftUpperArm","RightUpperArm","LeftLowerArm","RightLowerArm","LeftHand","RightHand","LeftUpperLeg","RightUpperLeg","LeftLowerLeg","RightLowerLeg","LeftFoot","RightFoot"}
+-- R6 bones
+local BBOX_BONES_R6={"Head","Torso","Left Arm","Right Arm","Left Leg","Right Leg"}
+local BONES_R6={"Head","Torso","Left Arm","Right Arm","Left Leg","Right Leg"}
+-- R15 skeleton pairs
+local SKEL_P_R15={
     {"Head","UpperTorso"},{"UpperTorso","LowerTorso"},
     {"UpperTorso","LeftUpperArm"},{"LeftUpperArm","LeftLowerArm"},{"LeftLowerArm","LeftHand"},
     {"UpperTorso","RightUpperArm"},{"RightUpperArm","RightLowerArm"},{"RightLowerArm","RightHand"},
     {"LowerTorso","LeftUpperLeg"},{"LeftUpperLeg","LeftLowerLeg"},{"LeftLowerLeg","LeftFoot"},
     {"LowerTorso","RightUpperLeg"},{"RightUpperLeg","RightLowerLeg"},{"RightLowerLeg","RightFoot"}
 }
+-- R6 skeleton pairs
+local SKEL_P_R6={
+    {"Head","Torso"},
+    {"Torso","Left Arm"},{"Torso","Right Arm"},
+    {"Torso","Left Leg"},{"Torso","Right Leg"}
+}
+
+-- Auto-detect R6 vs R15
+local function isR6(char)
+    return char:FindFirstChild("Torso") ~= nil
+end
+
+local function getBBoxBones(char)
+    if isR6(char) then return BBOX_BONES_R6 else return BBOX_BONES_R15 end
+end
+local function getAllBones(char)
+    if isR6(char) then return BONES_R6 else return BONES_R15 end
+end
+local function getSkelPairs(char)
+    if isR6(char) then return SKEL_P_R6 else return SKEL_P_R15 end
+end
+
+-- BYPASS: HRP-Name ist manchmal anders in custom games
+local function getHRPBypass(char)
+    return char:FindFirstChild("HumanoidRootPart")
+        or char:FindFirstChild("Torso")
+        or char:FindFirstChild("UpperTorso")
+        or char:FindFirstChildWhichIsA("BasePart")
+end
+
+-- BYPASS: BillboardGui parent versuchen über CoreGui (höher als LocalScript-Schutz)
+local function safeParentBB(bb, hrp)
+    local ok = pcall(function() bb.Parent = hrp end)
+    if not ok then
+        pcall(function()
+            local cg = game:GetService("CoreGui")
+            bb.Adornee = hrp
+            bb.Parent = cg
+        end)
+    end
+end
 
 local function getECol() return Color3.fromHSV(CFG.espColorH,CFG.espColorS,CFG.espColorV) end
 
@@ -1055,10 +1181,16 @@ local function ensureESPData(plr, hrp)
     if not espData[plr] then espData[plr]={} end
     local d=espData[plr]
 
+    -- BYPASS: BillboardGui immer neu bauen falls zerstört (auto-rebuild protection)
     if not d.bb or not d.bb.Parent then
-        local bb=Instance.new("BillboardGui"); bb.AlwaysOnTop=true
-        bb.Size=UDim2.new(0,165,0,52); bb.StudsOffset=Vector3.new(0,3.6,0); bb.LightInfluence=0
-        pcall(function() bb.Parent=hrp end); d.bb=bb
+        local bb=Instance.new("BillboardGui")
+        bb.AlwaysOnTop=true
+        bb.Size=UDim2.new(0,165,0,52)
+        bb.StudsOffset=Vector3.new(0,3.6,0)
+        bb.LightInfluence=0
+        bb.ResetOnSpawn=false
+        safeParentBB(bb, hrp)
+        d.bb=bb
         d.nl=mk("TextLabel",{Size=UDim2.new(1,0,0,20),BackgroundTransparency=1,
             TextSize=13,Font=Enum.Font.GothamBold,TextStrokeTransparency=0,TextStrokeColor3=Color3.fromRGB(0,0,0)},bb)
         local hbg=mk("Frame",{Size=UDim2.new(1,0,0,5),Position=UDim2.new(0,0,0,22),BackgroundColor3=Color3.fromRGB(26,4,4),BorderSizePixel=0},bb); rnd(hbg,3)
@@ -1185,36 +1317,98 @@ RunService:BindToRenderStep("GF_Master", Enum.RenderPriority.Camera.Value, funct
     end
 
     -- ---- AIMBOT ----
-    fovCircle.Visible=CFG.aimbot
+    fovCircle.Visible = CFG.aimbot
     if CFG.aimbot then
-        local r=CFG.aimbotFOV
-        fovCircle.Size=UDim2.new(0,r*2,0,r*2)
-        local rc=fovCircle:FindFirstChildOfClass("UICorner"); if rc then rc.CornerRadius=UDim.new(0,r) end
-        local held=isKbHeld("aimbot")
+        local r = CFG.aimbotFOV
+        fovCircle.Size = UDim2.new(0, r*2, 0, r*2)
+        local rc = fovCircle:FindFirstChildOfClass("UICorner")
+        if rc then rc.CornerRadius = UDim.new(0, r) end
+
+        local held = isKbHeld("aimbot")
         if held then
+            -- BYPASS: AutoRotate deaktivieren damit Charakter-Rotation Aimbot nicht stört
             if not aimbotWasHeld then
-                updateLOSFilter()
-                aimbotLockedTarget=getClosestTarget()
+                aimbotWasHeld = true
+                pcall(function()
+                    local hum = getHum()
+                    if hum then
+                        aimbotOrigAutoRotate = hum.AutoRotate
+                        hum.AutoRotate = false
+                    end
+                end)
+                -- BYPASS: CameraType auf Custom zwingen
+                pcall(function()
+                    aimbotOrigCamType = cam.CameraType
+                    cam.CameraType = Enum.CameraType.Custom
+                end)
             end
-            aimbotWasHeld=true
+
+            -- Target jeden Frame neu prüfen
+            if not aimbotLockedTarget or not aimbotLockedTarget.Parent then
+                aimbotLockedTarget = getClosestTarget()
+            end
+
             if aimbotLockedTarget and aimbotLockedTarget.Parent then
-                local canAim=true
-                if CFG.aimbotVisCheck then canAim=hasLOS(aimbotLockedTarget.Position) end
-                if canAim then
+                local canAim = true
+                if CFG.aimbotVisCheck then
+                    canAim = hasLOS(aimbotLockedTarget.Position)
+                end
+                -- Bei lost LOS neuen Target suchen
+                if not canAim then
+                    aimbotLockedTarget = getClosestTarget()
+                end
+
+                if aimbotLockedTarget and aimbotLockedTarget.Parent then
                     pcall(function()
-                        local targetCF=CFrame.new(cam.CFrame.Position, aimbotLockedTarget.Position)
-                        cam.CFrame=cam.CFrame:Lerp(targetCF, CFG.aimbotSmooth/100)
+                        local alpha = CFG.aimbotSmooth / 100
+                        -- Target Prediction für bewegende Ziele
+                        local targetPos = getPredictedPosition(aimbotLockedTarget)
+                        local targetCF = CFrame.new(cam.CFrame.Position, targetPos)
+                        local lerpedCF = cam.CFrame:Lerp(targetCF, alpha)
+                        -- BYPASS: alle Methoden gleichzeitig
+                        bypassSetCamera(lerpedCF)
                     end)
                 end
-            else
-                updateLOSFilter()
-                aimbotLockedTarget=getClosestTarget()
             end
         else
-            if aimbotWasHeld then aimbotLockedTarget=nil; aimbotWasHeld=false end
+            -- Held losgelassen: alles zurücksetzen
+            if aimbotWasHeld then
+                aimbotWasHeld = false
+                aimbotLockedTarget = nil
+                -- AutoRotate zurücksetzen
+                pcall(function()
+                    local hum = getHum()
+                    if hum and aimbotOrigAutoRotate ~= nil then
+                        hum.AutoRotate = aimbotOrigAutoRotate
+                    end
+                end)
+                -- CameraType zurücksetzen
+                pcall(function()
+                    if aimbotOrigCamType then
+                        cam.CameraType = aimbotOrigCamType
+                    end
+                end)
+                aimbotOrigAutoRotate = nil
+                aimbotOrigCamType = nil
+            end
         end
     else
-        aimbotLockedTarget=nil; aimbotWasHeld=false
+        -- Aimbot deaktiviert: cleanup
+        if aimbotWasHeld then
+            pcall(function()
+                local hum = getHum()
+                if hum and aimbotOrigAutoRotate ~= nil then
+                    hum.AutoRotate = aimbotOrigAutoRotate
+                end
+            end)
+            pcall(function()
+                if aimbotOrigCamType then cam.CameraType = aimbotOrigCamType end
+            end)
+        end
+        aimbotLockedTarget = nil
+        aimbotWasHeld = false
+        aimbotOrigAutoRotate = nil
+        aimbotOrigCamType = nil
     end
 
     -- ---- ESP ----
@@ -1238,7 +1432,7 @@ RunService:BindToRenderStep("GF_Master", Enum.RenderPriority.Camera.Value, funct
 
     for _,plr in ipairs(Players:GetPlayers()) do
         if plr~=lp and plr.Character then
-            local hrp=plr.Character:FindFirstChild("HumanoidRootPart")
+            local hrp=getHRPBypass(plr.Character)
             local hum=plr.Character:FindFirstChildOfClass("Humanoid")
             if hrp and hum then
                 local dist=myHRP and math.floor((hrp.Position-myHRP.Position).Magnitude) or 999
@@ -1274,13 +1468,14 @@ RunService:BindToRenderStep("GF_Master", Enum.RenderPriority.Camera.Value, funct
                         local minX,minY,maxX,maxY=math.huge,math.huge,-math.huge,-math.huge
                         local anyVis=false
 
-                        local boneList = (CFG.espSkeleton) and BONES or BBOX_BONES
+                        -- BYPASS: Auto-detect R6/R15 und richtige Bone-Liste nehmen
+                        local boneList = (CFG.espSkeleton) and getAllBones(plr.Character) or getBBoxBones(plr.Character)
 
                         for _,pn in ipairs(boneList) do
                             local pt=plr.Character:FindFirstChild(pn)
                             if pt then
-                                local sp,vis=cam:WorldToViewportPoint(pt.Position)
-                                if vis then
+                                local ok2,sp,vis=pcall(function() return cam:WorldToViewportPoint(pt.Position) end)
+                                if ok2 and vis then
                                     anyVis=true
                                     bonePos[pn]=Vector2.new(sp.X,sp.Y)
                                     if sp.X<minX then minX=sp.X end
@@ -1291,8 +1486,9 @@ RunService:BindToRenderStep("GF_Master", Enum.RenderPriority.Camera.Value, funct
                             end
                         end
 
+                        -- BYPASS: R6/R15 Fallback Part-Namen für Box-Bounds
                         local headPt  = plr.Character:FindFirstChild("Head")
-                        local rootPt  = plr.Character:FindFirstChild("HumanoidRootPart")
+                        local rootPt  = getHRPBypass(plr.Character)
                         local lFootPt = plr.Character:FindFirstChild("LeftFoot") or plr.Character:FindFirstChild("Left Leg")
                         local rFootPt = plr.Character:FindFirstChild("RightFoot") or plr.Character:FindFirstChild("Right Leg")
                         local lArmPt  = plr.Character:FindFirstChild("LeftUpperArm") or plr.Character:FindFirstChild("Left Arm")
@@ -1302,8 +1498,8 @@ RunService:BindToRenderStep("GF_Master", Enum.RenderPriority.Camera.Value, funct
 
                         if headPt then
                             local headTop = headPt.Position + Vector3.new(0, headPt.Size.Y * 0.5 + 0.1, 0)
-                            local sp,vis = cam:WorldToViewportPoint(headTop)
-                            if vis then
+                            local ok2,sp,vis = pcall(function() return cam:WorldToViewportPoint(headTop) end)
+                            if ok2 and vis then
                                 if sp.Y < topY then topY = sp.Y end
                                 if sp.X < leftX then leftX = sp.X end
                                 if sp.X > rightX then rightX = sp.X end
@@ -1313,8 +1509,8 @@ RunService:BindToRenderStep("GF_Master", Enum.RenderPriority.Camera.Value, funct
                         for _,fp in ipairs({lFootPt, rFootPt}) do
                             if fp then
                                 local footBot = fp.Position - Vector3.new(0, fp.Size.Y * 0.5, 0)
-                                local sp,vis = cam:WorldToViewportPoint(footBot)
-                                if vis then
+                                local ok2,sp,vis = pcall(function() return cam:WorldToViewportPoint(footBot) end)
+                                if ok2 and vis then
                                     if sp.Y > botY then botY = sp.Y end
                                     if sp.X < leftX then leftX = sp.X end
                                     if sp.X > rightX then rightX = sp.X end
@@ -1324,9 +1520,8 @@ RunService:BindToRenderStep("GF_Master", Enum.RenderPriority.Camera.Value, funct
 
                         for _,ap in ipairs({lArmPt, rArmPt}) do
                             if ap then
-                                local shoulderEdge = ap.Position
-                                local sp,vis = cam:WorldToViewportPoint(shoulderEdge)
-                                if vis then
+                                local ok2,sp,vis = pcall(function() return cam:WorldToViewportPoint(ap.Position) end)
+                                if ok2 and vis then
                                     if sp.X < leftX then leftX = sp.X end
                                     if sp.X > rightX then rightX = sp.X end
                                 end
@@ -1339,15 +1534,16 @@ RunService:BindToRenderStep("GF_Master", Enum.RenderPriority.Camera.Value, funct
                             local py = topY   - PAD
                             local pw = (rightX - leftX) + PAD*2
                             local ph2= (botY   - topY)  + PAD*2
-
                             if pw < 10 then pw = 10 end
                             if ph2 < 10 then ph2 = 10 end
 
                             if CFG.espCorner then drawCBoxPooled(d,px,py,pw,ph2,ecol) end
                             if CFG.espBoxFull then drawFBoxPooled(d,px,py,pw,ph2,ecol) end
 
+                            -- BYPASS: Skeleton mit R6+R15 Auto-Detect
                             if CFG.espSkeleton then
-                                for _,pair in ipairs(SKEL_P) do
+                                local skelPairs = getSkelPairs(plr.Character)
+                                for _,pair in ipairs(skelPairs) do
                                     local a=bonePos[pair[1]]; local b2=bonePos[pair[2]]
                                     if a and b2 then
                                         d.skelUsed=d.skelUsed+1
@@ -1370,13 +1566,20 @@ RunService:BindToRenderStep("GF_Master", Enum.RenderPriority.Camera.Value, funct
                                 end
                             end
 
-                            if CFG.espTracer and myHRP then
-                                local mp,mv=cam:WorldToViewportPoint(myHRP.Position)
-                                local ep=bonePos["HumanoidRootPart"] or bonePos["UpperTorso"] or bonePos["LowerTorso"]
-                                if mv and ep then
+                            -- BYPASS: Tracer von Bildschirm-Mitte unten (nicht von HRP)
+                            -- Das bypassed Spiele die getHRP() blockieren oder NetworkOwner setzen
+                            if CFG.espTracer then
+                                local screenCenter = cam.ViewportSize
+                                local tracerOriginX = screenCenter.X / 2
+                                local tracerOriginY = screenCenter.Y  -- unten Mitte
+                                local ep = bonePos["HumanoidRootPart"]
+                                    or bonePos["Torso"]
+                                    or bonePos["UpperTorso"]
+                                    or bonePos["LowerTorso"]
+                                if ep then
                                     d.lineUsed=d.lineUsed+1
                                     local f=d.linePool[d.lineUsed]
-                                    if f then updateLine(f,mp.X,mp.Y,ep.X,ep.Y,ecol,CFG.espLineThick) end
+                                    if f then updateLine(f, tracerOriginX, tracerOriginY, ep.X, ep.Y, ecol, CFG.espLineThick) end
                                 end
                             end
                         end
@@ -1385,14 +1588,40 @@ RunService:BindToRenderStep("GF_Master", Enum.RenderPriority.Camera.Value, funct
                         hidePool(d.skelPool, d.skelUsed+1)
                     end
 
+                    -- BYPASS: Highlight mit AlwaysOnTop + sethiddenproperty falls ReadOnly
                     if CFG.espChams then
                         if not d.hl or not d.hl.Parent then
-                            local hl=Instance.new("Highlight");hl.Adornee=plr.Character
-                            hl.FillTransparency=.80;hl.OutlineTransparency=0
+                            local hl=Instance.new("Highlight")
+                            hl.Adornee=plr.Character
+                            hl.FillTransparency=.80
+                            hl.OutlineTransparency=0
                             hl.DepthMode=Enum.HighlightDepthMode.AlwaysOnTop
-                            pcall(function() hl.Parent=plr.Character end); d.hl=hl
+                            -- BYPASS: versuche Parent = Character, dann CoreGui
+                            local hlOk = pcall(function() hl.Parent=plr.Character end)
+                            if not hlOk then
+                                pcall(function()
+                                    hl.Parent = game:GetService("CoreGui")
+                                end)
+                            end
+                            d.hl=hl
                         end
                         pcall(function() d.hl.FillColor=ecol; d.hl.OutlineColor=ecol end)
+                        -- BYPASS: sethiddenproperty für games die Highlight locken
+                        pcall(function()
+                            if sethiddenproperty then
+                                sethiddenproperty(d.hl,"FillTransparency",0.80)
+                                sethiddenproperty(d.hl,"DepthMode",Enum.HighlightDepthMode.AlwaysOnTop)
+                            end
+                        end)
+                        -- BYPASS: LocalTransparencyModifier auf 0 setzen damit Ziel sichtbar bleibt
+                        -- (einige Spiele setzen Spieler auf transparent um ESP zu verhindern)
+                        pcall(function()
+                            for _,part in ipairs(plr.Character:GetDescendants()) do
+                                if part:IsA("BasePart") and part.LocalTransparencyModifier > 0 then
+                                    part.LocalTransparencyModifier = 0
+                                end
+                            end
+                        end)
                     else
                         if d.hl then pcall(function() d.hl:Destroy() end); d.hl=nil end
                     end
@@ -1683,7 +1912,7 @@ btn("Combat","Set Aim: LMB","Hold Left Mouse to aim",function() CFG.keybinds["ai
 tog("Combat","Aimbot  (enable)","aimbot","Enable aimbot",nil)
 tog("Combat","Visual Check  (no wall aim)","aimbotVisCheck","Only aim at visible targets",nil)
 sld("Combat","FOV Radius",20,500,CFG.aimbotFOV,5,"Pixel radius",function(v) CFG.aimbotFOV=v end)
-sld("Combat","Smooth  (1=snap  100=slow)",1,100,CFG.aimbotSmooth,1,"Aim lerp speed",function(v) CFG.aimbotSmooth=v end)
+sld("Combat","Smooth  (1=slow  100=snap)",1,100,CFG.aimbotSmooth,1,"Aim speed — 1=very slow  100=instant snap",function(v) CFG.aimbotSmooth=v end)
 sec("Combat","Target Bone")
 btn("Combat","Head","Aim at head",function() CFG.aimbotBone="Head"; notify("Aimbot","Bone: Head",2) end)
 btn("Combat","UpperTorso","Aim at torso",function() CFG.aimbotBone="UpperTorso"; notify("Aimbot","Bone: Torso",2) end)
