@@ -1,7 +1,6 @@
 --[[
   ⚡  G L U H F I X  v 1 0 . 0  —  FINAL ULTRA BYPASS
   Toggle: [Insert] (customizable)
-  Password: GLUHFIX187 (saved after first entry)
 
   MAX FPS + LAG-FIX EDITION:
   - FPS Booster startet AUTOMATISCH beim Script-Start (max FPS sofort)
@@ -104,7 +103,7 @@ local CFG = {
     gravity=196,
     showCoords=false, showFPS=false, chatSpy=false,
     scannerRange=200, scannerAuto=false, scannerInterval=30,
-    pwSaved=false,
+    pwSaved=true,
     _origBright = Lighting.Brightness,
     _origFogEnd = Lighting.FogEnd,
     _origAmbient= Lighting.Ambient,
@@ -332,97 +331,10 @@ local function notify(ti,tx,d)
 end
 
 -- ============================================================
--- PASSWORD SCREEN
+-- MAIN WINDOW  (kein Passwort — lädt sofort)
 -- ============================================================
-local _guiUnlocked = CFG.pwSaved
+local _guiUnlocked = true
 
-local SmofBg
-if not CFG.pwSaved then
-    SmofBg = mk("Frame",{Size=UDim2.new(1,0,1,0),BackgroundColor3=Color3.fromRGB(0,0,0),BorderSizePixel=0,ZIndex=200},gui)
-    local sl=mk("Frame",{Size=UDim2.new(1,0,1,0),BackgroundTransparency=1,BorderSizePixel=0,ZIndex=201},SmofBg)
-    for i=0,80 do
-        mk("Frame",{Size=UDim2.new(1,0,0,1),Position=UDim2.new(0,0,0,i/80),
-            BackgroundColor3=Color3.fromRGB(255,255,255),BackgroundTransparency=0.95,BorderSizePixel=0,ZIndex=201},sl)
-    end
-    local SC=mk("Frame",{Size=UDim2.new(0,440,0,340),AnchorPoint=Vector2.new(.5,.5),
-        Position=UDim2.new(.5,0,.6,0),BackgroundColor3=Color3.fromRGB(4,4,6),BorderSizePixel=0,ZIndex=202},SmofBg)
-    rnd(SC,20)
-    mk("UIStroke",{Color=Color3.fromRGB(255,255,255),Thickness=1.5,ZIndex=203},SC)
-    local _gTop=mk("Frame",{Size=UDim2.new(1,0,0,2),Position=UDim2.new(0,0,0,0),
-        BackgroundColor3=Color3.fromRGB(255,255,255),BorderSizePixel=0,ZIndex=204},SC)
-    rnd(_gTop,2)
-    mk("TextLabel",{Text="⚡",Size=UDim2.new(1,0,0,64),Position=UDim2.new(0,0,0,22),
-        BackgroundTransparency=1,TextColor3=Color3.fromRGB(255,255,255),
-        TextSize=50,Font=Enum.Font.GothamBold,ZIndex=203},SC)
-    mk("TextLabel",{Text="GLUHFIX  v10.0",Size=UDim2.new(1,0,0,28),Position=UDim2.new(0,0,0,88),
-        BackgroundTransparency=1,TextColor3=Color3.fromRGB(235,235,235),
-        TextSize=20,Font=Enum.Font.GothamBold,ZIndex=203},SC)
-    mk("TextLabel",{Text="BYPASS EDITION",Size=UDim2.new(1,0,0,18),Position=UDim2.new(0,0,0,114),
-        BackgroundTransparency=1,TextColor3=Color3.fromRGB(100,100,110),
-        TextSize=11,Font=Enum.Font.Gotham,ZIndex=203},SC)
-    mk("TextLabel",{Text="Enter password to continue",Size=UDim2.new(1,0,0,16),Position=UDim2.new(0,0,0,136),
-        BackgroundTransparency=1,TextColor3=Color3.fromRGB(70,70,80),
-        TextSize=11,Font=Enum.Font.Gotham,ZIndex=203},SC)
-    local pwBox=mk("Frame",{Size=UDim2.new(1,-52,0,46),AnchorPoint=Vector2.new(.5,0),
-        Position=UDim2.new(.5,0,0,162),BackgroundColor3=Color3.fromRGB(12,12,15),BorderSizePixel=0,ZIndex=203},SC)
-    rnd(pwBox,12); mk("UIStroke",{Color=Color3.fromRGB(45,45,55),Thickness=1.2},pwBox)
-    local pwInput=mk("TextBox",{Size=UDim2.new(1,-20,1,0),Position=UDim2.new(0,10,0,0),
-        BackgroundTransparency=1,Text="",PlaceholderText="Password...",
-        TextColor3=Color3.fromRGB(255,255,255),PlaceholderColor3=Color3.fromRGB(55,55,65),
-        TextSize=16,Font=Enum.Font.GothamBold,TextXAlignment=Enum.TextXAlignment.Center,
-        ZIndex=204,ClearTextOnFocus=false},pwBox)
-    local pwBtn=mk("TextButton",{Size=UDim2.new(1,-52,0,46),AnchorPoint=Vector2.new(.5,0),
-        Position=UDim2.new(.5,0,0,218),BackgroundColor3=Color3.fromRGB(20,20,24),
-        TextColor3=Color3.fromRGB(255,255,255),Text="UNLOCK  ⚡",
-        TextSize=14,Font=Enum.Font.GothamBold,BorderSizePixel=0,ZIndex=203},SC)
-    rnd(pwBtn,12); mk("UIStroke",{Color=Color3.fromRGB(70,70,80),Thickness=1.2},pwBtn)
-    local pwSave=mk("TextLabel",{Text="☐  Remember password",Size=UDim2.new(1,0,0,18),Position=UDim2.new(0,0,0,272),
-        BackgroundTransparency=1,TextColor3=Color3.fromRGB(70,70,80),TextSize=11,Font=Enum.Font.Gotham,ZIndex=203},SC)
-    local pwSt=mk("TextLabel",{Text="",Size=UDim2.new(1,0,0,16),Position=UDim2.new(0,0,0,294),
-        BackgroundTransparency=1,TextColor3=Color3.fromRGB(255,50,70),TextSize=11,Font=Enum.Font.GothamBold,ZIndex=203},SC)
-    mk("TextLabel",{Text="Hello, "..lp.Name,Size=UDim2.new(1,0,0,14),Position=UDim2.new(0,0,0,316),
-        BackgroundTransparency=1,TextColor3=Color3.fromRGB(42,42,52),TextSize=10,Font=Enum.Font.Gotham,ZIndex=203},SC)
-
-    local rememberPw=false
-    pwSave.InputBegan:Connect(function(i)
-        if i.UserInputType==Enum.UserInputType.MouseButton1 then
-            rememberPw=not rememberPw
-            pwSave.Text=(rememberPw and "☑" or "☐").."  Remember password"
-            pwSave.TextColor3=rememberPw and Color3.fromRGB(180,180,180) or Color3.fromRGB(70,70,80)
-        end
-    end)
-    pwBtn.MouseEnter:Connect(function() tw(pwBtn,.1,{BackgroundColor3=Color3.fromRGB(38,38,44)}) end)
-    pwBtn.MouseLeave:Connect(function() tw(pwBtn,.1,{BackgroundColor3=Color3.fromRGB(20,20,24)}) end)
-    SC.BackgroundTransparency=1; SC.Position=UDim2.new(.5,0,.65,0)
-    tw(SC,.45,{BackgroundTransparency=0,Position=UDim2.new(.5,0,.5,0)},Enum.EasingStyle.Back,Enum.EasingDirection.Out)
-
-    local function tryUnlock()
-        local entered=pwInput.Text:upper():gsub("%s","")
-        if entered=="GLUHFIX187" then
-            pwSt.Text="✓ Unlocked!"; pwSt.TextColor3=Color3.fromRGB(50,220,100)
-            if rememberPw then CFG.pwSaved=true; saveConfig() end
-            tw(SC,.3,{BackgroundTransparency=1,Position=UDim2.new(.5,0,.38,0)},Enum.EasingStyle.Back,Enum.EasingDirection.In)
-            task.delay(.35,function()
-                tw(SmofBg,.2,{BackgroundTransparency=1})
-                task.delay(.21,function() SmofBg:Destroy(); _guiUnlocked=true end)
-            end)
-        else
-            pwSt.Text="✗ Wrong Password"; pwSt.TextColor3=Color3.fromRGB(255,50,70)
-            local ox=pwBox.Position.X.Offset
-            for _=1,4 do
-                tw(pwBox,.04,{Position=UDim2.new(.5,ox+9,0,162)}); task.wait(.05)
-                tw(pwBox,.04,{Position=UDim2.new(.5,ox-9,0,162)}); task.wait(.05)
-            end
-            tw(pwBox,.06,{Position=UDim2.new(.5,ox,0,162)}); pwInput.Text=""
-        end
-    end
-    pwBtn.MouseButton1Click:Connect(tryUnlock)
-    pwInput.FocusLost:Connect(function(e) if e then tryUnlock() end end)
-end
-
--- ============================================================
--- MAIN WINDOW
--- ============================================================
 local WIN_W, WIN_H = 820, 640
 local SIDEBAR_W = 160
 
@@ -543,9 +455,10 @@ local TABS={
     {id="ESP",      icon="🎯",  label="ESP",        col=Color3.fromHSV(.40,.90,1),  order=7},
     {id="Scanner",  icon="📡",  label="Scanner",    col=Color3.fromHSV(.10,.82,1),  order=8},
     {id="Map",      icon="🗺",  label="Map",        col=Color3.fromHSV(.16,.82,1),  order=9},
-    {id="Keybinds", icon="⌨",  label="Keybinds",   col=Color3.fromHSV(.62,.70,1),  order=10},
-    {id="Config",   icon="💾",  label="Config",     col=Color3.fromRGB(170,170,180), order=11},
-    {id="Settings", icon="⚙",  label="Settings",   col=Color3.fromRGB(170,170,180), order=12},
+    {id="Scripte",  icon="📜",  label="Scripts",    col=Color3.fromHSV(.50,.85,1),  order=10},
+    {id="Keybinds", icon="⌨",  label="Keybinds",   col=Color3.fromHSV(.62,.70,1),  order=11},
+    {id="Config",   icon="💾",  label="Config",     col=Color3.fromRGB(170,170,180), order=12},
+    {id="Settings", icon="⚙",  label="Settings",   col=Color3.fromRGB(170,170,180), order=13},
 }
 
 local function makeScroll(p)
@@ -1068,39 +981,26 @@ end
 
 -- ============================================================
 -- ESP — KOMPLETT OPTIMIERT v10.1
---
--- ÄNDERUNGEN (nur ESP, nichts anderes):
--- 1. ESP_REFRESH_RATE = 8 statt 3 — seltener aktualisieren
--- 2. BB_REFRESH_RATE = 12 — BillboardGui nur alle 12 frames
--- 3. Corner Box FIX: korrekte L-Form Berechnung ohne Float-Drift
--- 4. Pool-Size = 40 (Corner braucht max 8, Full max 4, Tracer 1)
--- 5. Alle WorldToViewport calls gebündelt — keine doppelten calls
--- 6. BillboardGui Enabled-Toggle nur bei Zustandsänderung
 -- ============================================================
 local espData={}
 local espFr=mk("Frame",{Size=UDim2.new(1,0,1,0),BackgroundTransparency=1,BorderSizePixel=0,ZIndex=10},gui)
 local skelFr=mk("Frame",{Size=UDim2.new(1,0,1,0),BackgroundTransparency=1,BorderSizePixel=0,ZIndex=11},gui)
 
--- FIX: Reduzierte Pool-Größe (Corner=8, Full=4, HeadDot=1, Tracer=1 → max 14 box lines)
--- Skeleton braucht max 14 lines → SKEL_POOL_SIZE = 14
-local LINE_POOL_SIZE = 40   -- war 80, jetzt 40 (reicht für alle ESP-Modi)
-local SKEL_POOL_SIZE = 14   -- exakt 14 Skeleton-Knochen-Verbindungen
+local LINE_POOL_SIZE = 40
+local SKEL_POOL_SIZE = 14
 
 local function createPooledLine(parent)
     local f=Instance.new("Frame")
     f.BorderSizePixel=0; f.Visible=false; f.ZIndex=15
-    f.AnchorPoint=Vector2.new(0.5, 0.5)  -- Mittelpunkt als Anker → Rotation korrekt für alle Winkel
+    f.AnchorPoint=Vector2.new(0.5, 0.5)
     f.Parent=parent; return f
 end
 
--- updateLine: positioniert Frame zwischen Punkt A und B
--- AnchorPoint(0.5,0.5) = Mitte der Line → korrekt für horizontale UND vertikale Lines
 local function updateLine(f, ax, ay, bx, by, col, thick)
     local dx,dy = bx-ax, by-ay
     local lenSq = dx*dx + dy*dy
     if lenSq < 1 then f.Visible=false; return end
     local len = math.sqrt(lenSq)
-    -- Position = Mittelpunkt zwischen A und B
     local mx, my = (ax+bx)*0.5, (ay+by)*0.5
     f.Size     = UDim2.new(0, len, 0, thick or 1)
     f.Position = UDim2.new(0, mx,  0, my)
@@ -1111,29 +1011,21 @@ end
 
 local function hidePool(pool, from)
     for i=from,#pool do
-        if pool[i].Visible then pool[i].Visible=false end  -- FIX: nur wenn nötig setzen
+        if pool[i].Visible then pool[i].Visible=false end
     end
 end
 
--- FIX: Corner Box komplett neu — korrekte L-Form ohne Überlappung/Drift
--- Jede Ecke = 2 Lines (horizontal + vertikal), insgesamt 8 Lines für 4 Ecken
 local function drawCBoxPooled(d, x, y, w, h, col, thick)
     local t = thick or CFG.espLineThick
-    -- cl = Corner Length: max 20% der kleineren Seite, min 6px, max 30px
     local cl = math.clamp(math.min(w, h) * 0.20, 6, 30)
-    local x2 = x + w  -- rechte Kante
-    local y2 = y + h  -- untere Kante
-
-    -- Oben-Links
+    local x2 = x + w
+    local y2 = y + h
     d.lineUsed=d.lineUsed+1; local f=d.linePool[d.lineUsed]; if f then updateLine(f, x, y, x+cl, y, col, t) end
     d.lineUsed=d.lineUsed+1; local f=d.linePool[d.lineUsed]; if f then updateLine(f, x, y, x, y+cl, col, t) end
-    -- Oben-Rechts
     d.lineUsed=d.lineUsed+1; local f=d.linePool[d.lineUsed]; if f then updateLine(f, x2-cl, y, x2, y, col, t) end
     d.lineUsed=d.lineUsed+1; local f=d.linePool[d.lineUsed]; if f then updateLine(f, x2, y, x2, y+cl, col, t) end
-    -- Unten-Links
     d.lineUsed=d.lineUsed+1; local f=d.linePool[d.lineUsed]; if f then updateLine(f, x, y2, x+cl, y2, col, t) end
     d.lineUsed=d.lineUsed+1; local f=d.linePool[d.lineUsed]; if f then updateLine(f, x, y2-cl, x, y2, col, t) end
-    -- Unten-Rechts
     d.lineUsed=d.lineUsed+1; local f=d.linePool[d.lineUsed]; if f then updateLine(f, x2-cl, y2, x2, y2, col, t) end
     d.lineUsed=d.lineUsed+1; local f=d.linePool[d.lineUsed]; if f then updateLine(f, x2, y2-cl, x2, y2, col, t) end
 end
@@ -1147,8 +1039,6 @@ local function drawFBoxPooled(d, x, y, w, h, col, thick)
     d.lineUsed=d.lineUsed+1; local f=d.linePool[d.lineUsed]; if f then updateLine(f,x2,y,x2,y2,col,t) end
 end
 
--- FIX: Nur die wirklich benötigten Bones für Bounding Box (4 Bones reichen)
--- Vollständige Liste nur für Skeleton
 local BBOX_BONES={"Head","UpperTorso","LowerTorso","LeftFoot","RightFoot","LeftHand","RightHand"}
 local BONES={"Head","UpperTorso","LowerTorso","HumanoidRootPart","LeftUpperArm","RightUpperArm","LeftLowerArm","RightLowerArm","LeftHand","RightHand","LeftUpperLeg","RightUpperLeg","LeftLowerLeg","RightLowerLeg","LeftFoot","RightFoot"}
 local SKEL_P={
@@ -1174,7 +1064,7 @@ local function ensureESPData(plr, hrp)
         local hbg=mk("Frame",{Size=UDim2.new(1,0,0,5),Position=UDim2.new(0,0,0,22),BackgroundColor3=Color3.fromRGB(26,4,4),BorderSizePixel=0},bb); rnd(hbg,3)
         d.hpF=mk("Frame",{BackgroundColor3=T.green,BorderSizePixel=0},hbg); rnd(d.hpF,3)
         d.dl=mk("TextLabel",{Size=UDim2.new(1,0,0,13),Position=UDim2.new(0,0,0,28),BackgroundTransparency=1,TextSize=10,Font=Enum.Font.Gotham,TextStrokeTransparency=0,TextColor3=T.dim},bb)
-        d.bbEnabled=false  -- FIX: Track enabled state
+        d.bbEnabled=false
     end
 
     if not d.boxFr or not d.boxFr.Parent then
@@ -1194,8 +1084,6 @@ local function ensureESPData(plr, hrp)
     return d
 end
 
--- FIX: ESP_REFRESH_RATE = 8 (alle 8 Frames ESP aktualisieren, ~7.5fps bei 60fps)
--- FIX: BB_REFRESH_RATE = 12 (BillboardGui nur alle 12 Frames → 5fps update)
 local ESP_REFRESH_RATE = 8
 local BB_REFRESH_RATE  = 12
 
@@ -1265,6 +1153,7 @@ RunService:BindToRenderStep("GF_Master", Enum.RenderPriority.Camera.Value, funct
     end
 
     -- ---- SPINBOT ----
+    -- spinSpeed = degrees per frame. More = faster, less = slower
     if CFG.spinBot then
         local h=getHRP()
         if h then pcall(function() h.CFrame=h.CFrame*CFrame.Angles(0,math.rad(CFG.spinSpeed),0) end) end
@@ -1321,15 +1210,13 @@ RunService:BindToRenderStep("GF_Master", Enum.RenderPriority.Camera.Value, funct
         return
     end
 
-    -- FIX: ESP nur alle ESP_REFRESH_RATE frames aktualisieren
     local doBoxUpdate = (espFrameCount % ESP_REFRESH_RATE == 0)
     local doBBUpdate  = (espFrameCount % BB_REFRESH_RATE == 0)
 
-    -- Wenn weder Box noch BB update → früh raus (spart ALLE ESP-Berechnungen)
     if not doBoxUpdate and not doBBUpdate then return end
 
     local myHRP=getHRP()
-    local ecol=getECol()  -- FIX: einmal pro Frame berechnen, nicht per Spieler
+    local ecol=getECol()
 
     for _,plr in ipairs(Players:GetPlayers()) do
         if plr~=lp and plr.Character then
@@ -1348,7 +1235,6 @@ RunService:BindToRenderStep("GF_Master", Enum.RenderPriority.Camera.Value, funct
                 else
                     local d=ensureESPData(plr, hrp)
 
-                    -- FIX: BillboardGui nur bei BB_REFRESH_RATE updaten
                     if doBBUpdate then
                         if not d.bbEnabled then
                             pcall(function() d.bb.Enabled=true end); d.bbEnabled=true
@@ -1362,7 +1248,6 @@ RunService:BindToRenderStep("GF_Master", Enum.RenderPriority.Camera.Value, funct
                         if d.dl then pcall(function() d.dl.Visible=CFG.espDist; d.dl.Text=dist.."m" end) end
                     end
 
-                    -- Box/Skeleton nur bei ESP_REFRESH_RATE updaten
                     if doBoxUpdate then
                         d.lineUsed=0
                         d.skelUsed=0
@@ -1371,13 +1256,11 @@ RunService:BindToRenderStep("GF_Master", Enum.RenderPriority.Camera.Value, funct
                         local minX,minY,maxX,maxY=math.huge,math.huge,-math.huge,-math.huge
                         local anyVis=false
 
-                        -- Alle Bones für Skeleton ODER nur Key-Bones für reine Box
                         local boneList = (CFG.espSkeleton) and BONES or BBOX_BONES
 
                         for _,pn in ipairs(boneList) do
                             local pt=plr.Character:FindFirstChild(pn)
                             if pt then
-                                -- Direkt Bone-Zentrum projizieren — kein CFrame-Rotate nötig
                                 local sp,vis=cam:WorldToViewportPoint(pt.Position)
                                 if vis then
                                     anyVis=true
@@ -1390,8 +1273,6 @@ RunService:BindToRenderStep("GF_Master", Enum.RenderPriority.Camera.Value, funct
                             end
                         end
 
-                        -- Box aus Kopf oben + Füße unten berechnen für präzise Höhe
-                        -- Breite: basierend auf UpperTorso/Schultern
                         local headPt  = plr.Character:FindFirstChild("Head")
                         local rootPt  = plr.Character:FindFirstChild("HumanoidRootPart")
                         local lFootPt = plr.Character:FindFirstChild("LeftFoot") or plr.Character:FindFirstChild("Left Leg")
@@ -1399,7 +1280,6 @@ RunService:BindToRenderStep("GF_Master", Enum.RenderPriority.Camera.Value, funct
                         local lArmPt  = plr.Character:FindFirstChild("LeftUpperArm") or plr.Character:FindFirstChild("Left Arm")
                         local rArmPt  = plr.Character:FindFirstChild("RightUpperArm") or plr.Character:FindFirstChild("Right Arm")
 
-                        -- Kopf-Top: Kopf-Position + halbe Kopfgröße nach oben
                         local topY, botY, leftX, rightX = minY, maxY, minX, maxX
 
                         if headPt then
@@ -1412,7 +1292,6 @@ RunService:BindToRenderStep("GF_Master", Enum.RenderPriority.Camera.Value, funct
                             end
                         end
 
-                        -- Fuß-Bottom: Fuß-Position - halbe Fußgröße nach unten
                         for _,fp in ipairs({lFootPt, rFootPt}) do
                             if fp then
                                 local footBot = fp.Position - Vector3.new(0, fp.Size.Y * 0.5, 0)
@@ -1425,7 +1304,6 @@ RunService:BindToRenderStep("GF_Master", Enum.RenderPriority.Camera.Value, funct
                             end
                         end
 
-                        -- Schulter-Breite für korrekte X-Breite
                         for _,ap in ipairs({lArmPt, rArmPt}) do
                             if ap then
                                 local shoulderEdge = ap.Position
@@ -1438,14 +1316,12 @@ RunService:BindToRenderStep("GF_Master", Enum.RenderPriority.Camera.Value, funct
                         end
 
                         if anyVis then
-                            -- Minimales Padding: 2px damit Box nicht direkt auf Skin sitzt
                             local PAD = 2
                             local px = leftX  - PAD
                             local py = topY   - PAD
                             local pw = (rightX - leftX) + PAD*2
                             local ph2= (botY   - topY)  + PAD*2
 
-                            -- Mindestgröße damit Box sichtbar bleibt
                             if pw < 10 then pw = 10 end
                             if ph2 < 10 then ph2 = 10 end
 
@@ -1489,9 +1365,8 @@ RunService:BindToRenderStep("GF_Master", Enum.RenderPriority.Camera.Value, funct
 
                         hidePool(d.linePool, d.lineUsed+1)
                         hidePool(d.skelPool, d.skelUsed+1)
-                    end -- doBoxUpdate
+                    end
 
-                    -- Chams
                     if CFG.espChams then
                         if not d.hl or not d.hl.Parent then
                             local hl=Instance.new("Highlight");hl.Adornee=plr.Character
@@ -1508,7 +1383,6 @@ RunService:BindToRenderStep("GF_Master", Enum.RenderPriority.Camera.Value, funct
         end
     end
 
-    -- Cleanup
     local toRemove={}
     for plr,d in pairs(espData) do
         if not Players:FindFirstChild(plr.Name) then
@@ -1536,7 +1410,7 @@ RunService.Heartbeat:Connect(function(dt)
     if CFG.speed then
         local hum=getHum(); local hrp=getHRP()
         if hum and hrp then
-            local t=CFG.speedMult  -- direkt als WalkSpeed, kein *16
+            local t=CFG.speedMult
             pcall(function() hum.WalkSpeed=t end)
             if sethiddenproperty then pcall(function() sethiddenproperty(hum,"WalkSpeed",t) end) end
             if hbFrame % 30 == 0 then pcall(function() hrp:SetNetworkOwner(nil) end) end
@@ -1614,7 +1488,7 @@ RunService.Heartbeat:Connect(function(dt)
             if CFG.invisible then table.insert(feats,"INVIS") end
             if CFG.antiLag then table.insert(feats,"FPS+") end
             hFeats.Text="🔧 "..(#feats>0 and table.concat(feats," · ") or "No features active")
-            hInfo.Text="GLUHFIX v10 | "..lp.Name.." | PW: GLUHFIX187"
+            hInfo.Text="GLUHFIX v10 | "..lp.Name
         end
     end
 
@@ -1746,7 +1620,8 @@ tog("Move","Bunny Hop","bunnyHop","Auto-jump on landing",function(on) if on then
 tog("Move","Auto Jump","autoJump","Auto-jump while grounded",nil)
 sec("Move","Misc")
 tog("Move","Spinbot","spinBot","Spin character constantly",nil)
-sld("Move","Spin Speed",1,40,CFG.spinSpeed,1,"Degrees/frame",function(v) CFG.spinSpeed=v end)
+-- Spinbot Speed: höherer Wert = schneller drehen, niedrigerer Wert = langsamer
+sld("Move","Spin Speed  (more=faster)",1,40,CFG.spinSpeed,1,"Degrees per frame — more=faster  less=slower",function(v) CFG.spinSpeed=v end)
 tog("Move","Anti-AFK","antiAfk","Auto-jump every 6min",nil)
 tog("Move","Anti-Lag  [100%]","antiLag","Kills ALL particles/effects/shadows",function(on) applyAntiLag(on) end)
 note("Move","Removes: particles fire smoke bloom DoF atmosphere lights")
@@ -1784,7 +1659,7 @@ local abModeDisp=mk("TextLabel",{
     TextSize=12,Font=Enum.Font.GothamBold,BorderSizePixel=0,TextXAlignment=Enum.TextXAlignment.Center},tabScrolls["Combat"])
 rnd(abModeDisp,10); mk("UIStroke",{Color=T.border,Thickness=1.2},abModeDisp)
 rTC(function() abModeDisp.BackgroundColor3=T.accDark; abModeDisp.TextColor3=T.accent end)
-note("Combat","Standard: RMB halten = zielen. Keybinds-Tab zum Ändern.")
+note("Combat","Default: hold RMB to aim. Change in Keybinds tab.")
 btn("Combat","Set Aim: RMB","Hold Right Mouse to aim",function() CFG.keybinds["aimbot"]={type="mouse",value="RMB"}; abModeDisp.Text="Aim Trigger:  [ RMB ]"; saveConfig() end)
 btn("Combat","Set Aim: LMB","Hold Left Mouse to aim",function() CFG.keybinds["aimbot"]={type="mouse",value="LMB"}; abModeDisp.Text="Aim Trigger:  [ LMB ]"; saveConfig() end)
 tog("Combat","Aimbot  (enable)","aimbot","Enable aimbot",nil)
@@ -1836,7 +1711,7 @@ end)
 sec("Player","Appearance")
 tog("Player","Invisible  [BYPASS]","invisible","LocalTransparencyModifier",function(on) applyInvis(on) end)
 tog("Player","Headless","headless","Hide head",function(on) applyHeadless(on) end)
-btn("Player","🌈  Rainbow  (10s)","Alle Körperteile regenbogenfarben",function()
+btn("Player","🌈  Rainbow  (10s)","Color all body parts rainbow",function()
     task.spawn(function()
         for t=0,200 do
             local c=getChar(); if not c then break end
@@ -1848,19 +1723,19 @@ btn("Player","🌈  Rainbow  (10s)","Alle Körperteile regenbogenfarben",functio
         end
     end)
 end)
-btn("Player","🖤  All Black","Alles schwarz färben",function()
+btn("Player","🖤  All Black","Color everything black",function()
     local c=getChar(); if not c then return end
     for _,p in ipairs(c:GetDescendants()) do
         if p:IsA("BasePart") and p.Name~="HumanoidRootPart" then pcall(function() p.Color=Color3.fromRGB(0,0,0) end) end
     end
 end)
-btn("Player","🤍  All White","Alles weiß färben",function()
+btn("Player","🤍  All White","Color everything white",function()
     local c=getChar(); if not c then return end
     for _,p in ipairs(c:GetDescendants()) do
         if p:IsA("BasePart") and p.Name~="HumanoidRootPart" then pcall(function() p.Color=Color3.fromRGB(255,255,255) end) end
     end
 end)
-btn("Player","✨  Neon Skin","Neon-Leuchten Körper",function()
+btn("Player","✨  Neon Skin","Neon glowing body",function()
     local c=getChar(); if not c then return end
     for _,p in ipairs(c:GetDescendants()) do
         if p:IsA("BasePart") and p.Name~="HumanoidRootPart" then
@@ -1868,7 +1743,7 @@ btn("Player","✨  Neon Skin","Neon-Leuchten Körper",function()
         end
     end
 end)
-btn("Player","🔍  Accessories entfernen","Alle Hut/Accessory Items verstecken",function()
+btn("Player","🔍  Remove Accessories","Hide all hat/accessory items",function()
     local c=getChar(); if not c then return end
     for _,a in ipairs(c:GetChildren()) do
         if a:IsA("Accessory") then
@@ -1876,9 +1751,9 @@ btn("Player","🔍  Accessories entfernen","Alle Hut/Accessory Items verstecken"
             if h then pcall(function() h.Transparency=1 end) end
         end
     end
-    notify("GLUHFIX","Accessories ausgeblendet",2)
+    notify("GLUHFIX","Accessories hidden",2)
 end)
-btn("Player","↩  Accessories zurück","Accessories wieder sichtbar",function()
+btn("Player","↩  Accessories Back","Show accessories again",function()
     local c=getChar(); if not c then return end
     for _,a in ipairs(c:GetChildren()) do
         if a:IsA("Accessory") then
@@ -1886,34 +1761,34 @@ btn("Player","↩  Accessories zurück","Accessories wieder sichtbar",function()
             if h then pcall(function() h.Transparency=0 end) end
         end
     end
-    notify("GLUHFIX","Accessories sichtbar",2)
+    notify("GLUHFIX","Accessories visible",2)
 end)
 sec("Player","Actions")
-btn("Player","🟦  Platform  (5s)","Neon-Plattform unter dir",function()
+btn("Player","🟦  Platform  (5s)","Neon platform below you",function()
     local hrp=getHRP();if not hrp then return end
     local p=Instance.new("Part"); p.Size=Vector3.new(12,1,12); p.Anchored=true
     p.Material=Enum.Material.Neon; p.BrickColor=BrickColor.new("Institutional white")
     pcall(function() p.CFrame=hrp.CFrame*CFrame.new(0,-3.5,0) end); p.Parent=workspace; Debris:AddItem(p,5)
     notify("GLUHFIX","Platform spawned — 5s",2)
 end)
-btn("Player","🔄  Respawn","Tötet zum Respawn",function() local h=getHum();if h then pcall(function() h.Health=0 end) end end)
-btn("Player","🚀  Yeet Up","In die Luft katapultieren",function()
+btn("Player","🔄  Respawn","Kill yourself to respawn",function() local h=getHum();if h then pcall(function() h.Health=0 end) end end)
+btn("Player","🚀  Yeet Up","Launch yourself into the air",function()
     local hrp=getHRP();if not hrp then return end
     local bv=Instance.new("BodyVelocity");bv.MaxForce=Vector3.new(1e9,1e9,1e9);bv.Velocity=Vector3.new(0,900,0);bv.Parent=hrp;Debris:AddItem(bv,.15)
 end)
-btn("Player","💥  Superjump  (einmal)","Einmaliger mega Sprung",function()
+btn("Player","💥  Superjump  (once)","One-time mega jump",function()
     local hrp=getHRP();if not hrp then return end
     local bv=Instance.new("BodyVelocity");bv.MaxForce=Vector3.new(1e9,1e9,1e9)
     bv.Velocity=Vector3.new(0,450,0);bv.Parent=hrp;Debris:AddItem(bv,.2)
 end)
-btn("Player","🌀  Körper ausblenden  (Torso)","Torso transparent",function()
+btn("Player","🌀  Hide Body  (Torso)","Make torso transparent",function()
     local c=getChar(); if not c then return end
     local parts={"UpperTorso","LowerTorso","Torso"}
     for _,n in ipairs(parts) do
         local p=c:FindFirstChild(n)
         if p then pcall(function() p.LocalTransparencyModifier=1 end) end
     end
-    notify("GLUHFIX","Torso ausgeblendet",2)
+    notify("GLUHFIX","Torso hidden",2)
 end)
 
 ---- ANIMATIONS ----
@@ -1948,7 +1823,7 @@ btn("Anim","▶  Play Custom Anim","Play custom ID",function() playAnim(custIdVa
 
 ---- ESP ----
 sec("ESP","ESP Settings")
-note("ESP","ESP v10.1 — optimiert für maximale FPS")
+note("ESP","ESP v10.1 — optimized for maximum FPS")
 tog("ESP","Enable ESP","esp","See all players through walls",nil)
 tog("ESP","Corner Box","espCorner","Corner brackets",nil)
 tog("ESP","Full Box","espBoxFull","Full outline box",nil)
@@ -1969,7 +1844,7 @@ note("ESP","White=H0 S0 V100  |  Green=H36 S90 V100  |  Red=H0 S100 V100")
 
 ---- SCANNER ----
 sec("Scanner","Nearby Object Scanner")
-note("Scanner","Scannt workspace nach Objekten in Reichweite")
+note("Scanner","Scans workspace for objects in range")
 sld("Scanner","Scan Range  (studs)",10,2000,CFG.scannerRange,10,"Scan distance",function(v) CFG.scannerRange=v end)
 tog("Scanner","Auto-scan  (every 30s)","scannerAuto","Automatically re-scan",nil)
 sld("Scanner","Auto-scan Interval  (s)",5,120,CFG.scannerInterval,5,"Seconds between scans",function(v) CFG.scannerInterval=v end)
@@ -2072,22 +1947,22 @@ local function spawnCoolMarker(cf)
     end)
 end
 
-btn("Map","📍  Position speichern + Marker","Speichert Position und zeigt coolen Pfeil",function()
+btn("Map","📍  Save Position + Marker","Saves position and shows cool marker",function()
     local hrp=getHRP(); if hrp then
         lastPos=hrp.CFrame
         spawnCoolMarker(hrp.CFrame)
-        notify("GLUHFIX","Position gespeichert! Marker gesetzt ✓",3)
+        notify("GLUHFIX","Position saved! Marker set ✓",3)
     end
 end)
-btn("Map","🔁  Zurück zur gespeicherten Position","Teleport zurück",function()
+btn("Map","🔁  Return to Saved Position","Teleport back",function()
     local hrp=getHRP(); if hrp and lastPos then
         pcall(function() hrp.CFrame=lastPos end)
-        notify("GLUHFIX","Teleportiert!",2)
-    else notify("GLUHFIX","Keine Position gespeichert",2) end
+        notify("GLUHFIX","Teleported!",2)
+    else notify("GLUHFIX","No position saved",2) end
 end)
-btn("Map","🗑  Remove Marker  — alles entfernen","Marker komplett löschen",function()
+btn("Map","🗑  Remove Marker  — remove all","Delete marker completely",function()
     removeAllMarkers()
-    notify("GLUHFIX","Marker entfernt ✓",2)
+    notify("GLUHFIX","Marker removed ✓",2)
 end)
 sec("Map","Workspace Tools")
 btn("Map","Highlight All Parts  (5s)","SelectionBox on all parts for 5s",function()
@@ -2100,10 +1975,32 @@ btn("Map","Highlight All Parts  (5s)","SelectionBox on all parts for 5s",functio
     end
 end)
 
+---- SCRIPTE ----
+sec("Scripte","Scripts")
+note("Scripte","Press a button to execute the script")
+
+btn("Scripte","🎯  Fling Script  —  execute","Loads and starts the Ultimate Fling GUI Script",function()
+    notify("GLUHFIX","Fling Script loading...",3)
+    task.spawn(function()
+        pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/K1LAS1K/Ultimate-Fling-GUI/main/flingscript.lua"))()
+        end)
+    end)
+end)
+
+btn("Scripte","⚔️  Rivalen Script  —  execute","Loads and starts the Rivalen Script",function()
+    notify("GLUHFIX","Rivalen Script loading...",3)
+    task.spawn(function()
+        pcall(function()
+            loadstring(game:HttpGet("https://pastebin.com/raw/zWhb1mMS"))()
+        end)
+    end)
+end)
+
 ---- KEYBINDS ----
 sec("Keybinds","Universal Keybind System")
-note("Keybinds","Klick auf Pille = neu binden  ·  Rechtsklick = löschen")
-note("Keybinds","Unterstützt: jede Taste, LMB, RMB")
+note("Keybinds","Click pill = rebind  ·  Right-click = remove")
+note("Keybinds","Supports: any key, LMB, RMB")
 local allKbFeats={
     {"fly","Fly"},{"noclip","Noclip"},{"speed","Speed Boost"},{"highJump","High Jump"},
     {"aimbot","Aimbot (hold)"},{"esp","Toggle ESP"},{"invisible","Invisible"},
@@ -2115,7 +2012,7 @@ for _,pair in ipairs(allKbFeats) do kbWidget("Keybinds",pair[1],pair[2]) end
 
 ---- CONFIG ----
 sec("Config","Config & Save")
-note("Config","Alle Settings speichern automatisch.")
+note("Config","All settings save automatically.")
 btn("Config","💾  Save Now","Save all settings",function() saveConfig(); notify("GLUHFIX","Config saved! ✓",3) end)
 btn("Config","🔄  Reset Config","Clear all saved values",function()
     pcall(function()
@@ -2125,10 +2022,6 @@ btn("Config","🔄  Reset Config","Clear all saved values",function()
         end
     end)
     notify("GLUHFIX","Config reset! Restart script.",3)
-end)
-btn("Config","🔑  Reset Saved Password","Forces password re-entry",function()
-    pcall(function() lp:SetAttribute("GF10_b_pwSaved","0") end)
-    notify("GLUHFIX","Password reset. Restart script.",3)
 end)
 sec("Config","Active Features Overview")
 local statusLabels={}
@@ -2188,11 +2081,11 @@ btn("Settings","≡  Switch to Classic Layout","Top tab bar",function()
     CFG.layoutMode="classic"; saveConfig(); notify("GLUHFIX","Classic layout — restart",3)
 end)
 sec("Settings","⚡ FPS Booster")
-note("Settings","FPS Booster startet automatisch beim Script-Start")
-btn("Settings","🚀  FPS Boost  —  jetzt erneut anwenden","Maximiert FPS: killt Partikel, Schatten, Effekte",function()
-    applyMaxFPS(); notify("GLUHFIX","MAX FPS Booster angewendet! ✓",4)
+note("Settings","FPS Booster starts automatically on script load")
+btn("Settings","🚀  FPS Boost  —  apply again","Maximize FPS: kills particles, shadows, effects",function()
+    applyMaxFPS(); notify("GLUHFIX","MAX FPS Booster applied! ✓",4)
 end)
-note("Settings","Deaktiviert: GlobalShadows, Bloom, Fog, Particles, Atmosphere, DoF")
+note("Settings","Disables: GlobalShadows, Bloom, Fog, Particles, Atmosphere, DoF")
 sec("Settings","Info & Tools")
 tog("Settings","Coordinates","showCoords","XYZ on screen",nil)
 tog("Settings","FPS Counter","showFPS","FPS on screen",nil)
@@ -2272,11 +2165,12 @@ switchTab("Move")
 Win.Visible=false
 Win.Size=UDim2.new(0,WIN_W,0,WIN_H)
 
+-- Sofort öffnen (kein Passwort mehr)
 task.spawn(function()
-    repeat task.wait(.1) until _guiUnlocked
+    task.wait(0.1)
     showWin(true)
 end)
 
-print("⚡ GLUHFIX v10.0 ESP-FIX loaded — Hello, "..lp.Name)
-print("  Password: GLUHFIX187  |  Toggle: ["..tostring(CFG.toggleKey):match("%.(%a+)$").."]")
+print("⚡ GLUHFIX v10.0 loaded — Hello, "..lp.Name)
+print("  Toggle: ["..tostring(CFG.toggleKey):match("%.(%a+)$").."]")
 print("  ESP v10.1: Rate="..ESP_REFRESH_RATE.."f BB="..BB_REFRESH_RATE.."f | Corner Box FIXED | Pool=40/14")
