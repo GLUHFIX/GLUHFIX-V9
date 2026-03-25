@@ -1,0 +1,146 @@
+local player = game.Players.LocalPlayer
+local runService = game:GetService("RunService")
+local coreGui = game:GetService("CoreGui")
+
+if coreGui:FindFirstChild("GLUEHFIX_FINAL_V20") then
+    coreGui.GLUEHFIX_FINAL_V20:Destroy()
+end
+
+local screenGui = Instance.new("ScreenGui", coreGui)
+screenGui.Name = "GLUEHFIX_FINAL_V20"
+screenGui.ResetOnSpawn = false
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+local targetPlayer = nil
+local currentMode = "None"
+local timer = 0
+local stickDistance = 2.5
+
+-- GUI SETUP
+local main = Instance.new("Frame", screenGui)
+main.Size = UDim2.new(0, 450, 0, 350); main.Position = UDim2.new(0.5, -225, 0.3, 0)
+main.BackgroundColor3 = Color3.fromRGB(10, 10, 10); main.Active = true; main.Draggable = true; main.ZIndex = 5
+Instance.new("UICorner", main).CornerRadius = UDim.new(0, 10)
+local stroke = Instance.new("UIStroke", main); stroke.Color = Color3.fromRGB(255, 0, 255); stroke.Thickness = 2
+
+local openBtn = Instance.new("TextButton", screenGui)
+openBtn.Size = UDim2.new(0, 40, 0, 40); openBtn.Position = UDim2.new(0.01, 0, 0.05, 0)
+openBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0); openBtn.Text = "G"; openBtn.TextColor3 = Color3.fromRGB(255, 0, 255)
+openBtn.Font = Enum.Font.GothamBold; openBtn.TextSize = 25; openBtn.Visible = false; openBtn.ZIndex = 10
+Instance.new("UICorner", openBtn).CornerRadius = UDim.new(1, 0)
+openBtn.MouseButton1Click:Connect(function() main.Visible = true; openBtn.Visible = false end)
+
+local closeBtn = Instance.new("TextButton", main)
+closeBtn.Size = UDim2.new(0, 30, 0, 30); closeBtn.Position = UDim2.new(1, -35, 0, 5)
+closeBtn.Text = "X"; closeBtn.TextColor3 = Color3.new(1, 1, 1); closeBtn.BackgroundColor3 = Color3.fromRGB(255, 0, 255)
+closeBtn.ZIndex = 15; Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(1, 0)
+closeBtn.MouseButton1Click:Connect(function() main.Visible = false; openBtn.Visible = true end)
+
+local title = Instance.new("TextLabel", main)
+title.Size = UDim2.new(1, 0, 0, 40); title.Text = "GLÜHFIX v2.0"; title.TextColor3 = Color3.fromRGB(255, 0, 255)
+title.BackgroundColor3 = Color3.fromRGB(20, 20, 20); title.Font = Enum.Font.GothamBold; title.TextSize = 18
+Instance.new("UICorner", title).CornerRadius = UDim.new(0, 10)
+
+local scroll = Instance.new("ScrollingFrame", main)
+scroll.Size = UDim2.new(0.45, 0, 0.75, 0); scroll.Position = UDim2.new(0.03, 0, 0.2, 0); scroll.BackgroundTransparency = 1
+scroll.CanvasSize = UDim2.new(0, 0, 0, 0); scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+Instance.new("UIListLayout", scroll).Padding = UDim.new(0, 5)
+
+local optFrame = Instance.new("Frame", main)
+optFrame.Size = UDim2.new(0.45, 0, 0.75, 0); optFrame.Position = UDim2.new(0.52, 0, 0.2, 0); optFrame.BackgroundTransparency = 1
+Instance.new("UIListLayout", optFrame).Padding = UDim.new(0, 5)
+
+-- SLIDER
+local sliderFrame = Instance.new("Frame", optFrame)
+sliderFrame.Size = UDim2.new(1, 0, 0, 50); sliderFrame.BackgroundTransparency = 1; sliderFrame.Visible = false
+local sliderLabel = Instance.new("TextLabel", sliderFrame)
+sliderLabel.Size = UDim2.new(1, 0, 0, 20); sliderLabel.Text = "Stick Distance: 2.5"; sliderLabel.TextColor3 = Color3.new(1,1,1); sliderLabel.BackgroundTransparency = 1
+local sliderBar = Instance.new("TextButton", sliderFrame)
+sliderBar.Size = UDim2.new(0.9, 0, 0, 10); sliderBar.Position = UDim2.new(0.05, 0, 0.5, 0); sliderBar.BackgroundColor3 = Color3.fromRGB(50,50,50); sliderBar.Text = ""
+local sliderDot = Instance.new("Frame", sliderBar)
+sliderDot.Size = UDim2.new(0, 15, 0, 15); sliderDot.Position = UDim2.new(0.25, -7, 0.5, -7); sliderDot.BackgroundColor3 = Color3.fromRGB(255,0,255)
+Instance.new("UICorner", sliderDot).CornerRadius = UDim.new(1,0)
+
+local dragging = false
+sliderBar.MouseButton1Down:Connect(function() dragging = true end)
+game:GetService("UserInputService").InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end end)
+game:GetService("UserInputService").InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local relativeX = math.clamp((input.Position.X - sliderBar.AbsolutePosition.X) / sliderBar.AbsoluteSize.X, 0, 1)
+        sliderDot.Position = UDim2.new(relativeX, -7, 0.5, -7); stickDistance = relativeX * 10
+        sliderLabel.Text = "Stick Distance: " .. string.format("%.1f", stickDistance)
+    end
+end)
+
+local stopBar = Instance.new("Frame", screenGui)
+stopBar.Size = UDim2.new(0, 250, 0, 55); stopBar.Position = UDim2.new(0.5, -125, 0.88, 0)
+stopBar.BackgroundColor3 = Color3.fromRGB(255, 0, 255); stopBar.Visible = false
+Instance.new("UICorner", stopBar)
+local stopBtn = Instance.new("TextButton", stopBar)
+stopBtn.Size = UDim2.new(1, 0, 1, 0); stopBtn.Text = "STOP ACTION"; stopBtn.Font = Enum.Font.GothamBold
+stopBtn.TextSize = 22; stopBtn.TextColor3 = Color3.new(0, 0, 0); stopBtn.BackgroundTransparency = 1
+stopBtn.MouseButton1Click:Connect(function() 
+    targetPlayer = nil; currentMode = "None"; stopBar.Visible = false; sliderFrame.Visible = false
+    if player.Character and player.Character:FindFirstChild("Humanoid") then player.Character.Humanoid.Sit = false end
+end)
+
+-- LOOP (REINFORCED)
+runService.Heartbeat:Connect(function(dt)
+    if not targetPlayer or currentMode == "None" then return end
+    
+    local char = player.Character
+    local tChar = targetPlayer.Character
+    
+    if char and tChar and char:FindFirstChild("HumanoidRootPart") and tChar:FindFirstChild("HumanoidRootPart") then
+        local root = char.HumanoidRootPart
+        local hum = char:FindFirstChild("Humanoid")
+        local tRoot = tChar.HumanoidRootPart
+        local tHead = tChar:FindFirstChild("Head")
+        
+        stopBar.Visible = true
+        for _, v in ipairs(char:GetChildren()) do if v:IsA("BasePart") then v.CanCollide = false end end
+        timer = timer + dt * 30
+        
+        if currentMode == "BACKSHOTS" then
+            root.CFrame = tRoot.CFrame * CFrame.new(0, -0.2, 1.2 + math.sin(timer) * 1.5)
+        elseif currentMode == "BLOWJOB" and tHead then
+            root.CFrame = tHead.CFrame * CFrame.new(0, 0.9, -1.0 + -math.sin(timer) * 1) * CFrame.Angles(0, math.rad(180), 0)
+        elseif currentMode == "MY BLOWJOB" then
+            root.CFrame = tRoot.CFrame * CFrame.new(0, -2.0, -1.1 + math.sin(timer) * 1) * CFrame.Angles(0, math.rad(180), 0)
+        elseif currentMode == "SIT ON HEAD" and tHead then
+            if hum then hum.Sit = true end
+            root.CFrame = tHead.CFrame * CFrame.new(0, 2.2, 0)
+        elseif currentMode == "STICK" then
+            root.CFrame = tRoot.CFrame * CFrame.new(0, 0, stickDistance)
+        end
+    end
+end)
+
+local function createModeBtn(name)
+    local b = Instance.new("TextButton", optFrame)
+    b.Size = UDim2.new(1, 0, 0, 40); b.Text = name; b.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    b.TextColor3 = Color3.new(1, 1, 1); b.Font = Enum.Font.GothamBold; b.TextSize = 14
+    b.MouseButton1Click:Connect(function() currentMode = name; sliderFrame.Visible = (name == "STICK") end)
+    Instance.new("UICorner", b); Instance.new("UIStroke", b).Color = Color3.fromRGB(255, 0, 255)
+end
+
+createModeBtn("BACKSHOTS"); createModeBtn("BLOWJOB"); createModeBtn("MY BLOWJOB"); createModeBtn("SIT ON HEAD"); createModeBtn("STICK")
+
+-- PLAYER LIST WITH @NAME
+local function updateList()
+    for _, v in ipairs(scroll:GetChildren()) do if v:IsA("TextButton") then v:Destroy() end end
+    for _, p in ipairs(game.Players:GetPlayers()) do
+        if p ~= player then
+            local btn = Instance.new("TextButton", scroll)
+            btn.Size = UDim2.new(1, -10, 0, 45); -- Etwas größer für 2 Zeilen
+            btn.Text = p.DisplayName .. "\n( @" .. p.Name .. " )"
+            btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40); btn.TextColor3 = Color3.new(1, 1, 1)
+            btn.Font = Enum.Font.GothamBold; btn.TextSize = 12
+            btn.MouseButton1Click:Connect(function() targetPlayer = p end)
+            Instance.new("UICorner", btn)
+        end
+    end
+end
+
+task.spawn(function() while task.wait(5) do updateList() end end)
+updateList()
